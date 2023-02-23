@@ -1,5 +1,5 @@
 import fiftyone as fo
-from lib.importer import SGCCGameDatasetImporter
+from core.importer import SGCCGameDatasetImporter
 from IPython import embed
 
 def main(data_dir):
