@@ -3,8 +3,8 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-23 12:57:05
-@FilePath: /dataset_manager/lib/importer/sgccgame_dataset_importer.py
+@LastEditTime: 2023-02-24 11:09:32
+@FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
 
@@ -54,9 +54,7 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
         self._imgs_path_iter = iter(self._imgs_path)
         return self
 
-    def __next__(
-        self
-    ) -> Tuple[str, Optional[fom.ImageMetadata], Optional[fol.Detections]]:
+    def __next__(self):
         current_img_path = next(self._imgs_path_iter)
 
         if not os.path.exists(current_img_path):
@@ -71,12 +69,15 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
             logging.warning("{} do not have xml!".format(current_img_path))
             return current_img_path, img_meta, None
 
+        img_meta["xml_path"]=current_xml_path
         _, objs_info = parse_xml_info(current_xml_path)
-        label_info=objs_infomap2foDetections(
-            objs_info, img_meta)
+        label_info = objs_infomap2foDetections(objs_info, img_meta)
 
+        return current_img_path, img_meta, {
+            "ground_truth": label_info,
+            "test_filed": "aaaa"
+        }
 
-        return current_img_path, img_meta, label_info
     @property
     def has_dataset_info(self):
         return False
@@ -90,7 +91,7 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.Detections
+        return {"ground_truth": fol.Detections, "test_filed": dict}
 
     def setup(self):
         self._imgs_path = get_all_file_path(self._dataset_dir,
@@ -120,3 +121,28 @@ def objs_infomap2foDetections(
                                   bounding_box=bbox,
                                   ori_data_prob=False))
     return fol.Detections(detections=result)
+
+
+def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
+
+    sample=None
+
+    if not os.path.exists(img_path):
+        logging.warning("{} is not exists".format(img_path))
+        return sample
+
+    img_meta = parse_img_metadata(img_path)
+    sample=fo.Sample(filepath=img_path,metadata=img_meta)
+    anno_path = os.path.splitext(img_path)[0] + ".anno"
+
+    xml_path = os.path.splitext(img_path)[0] + ".xml"
+    if not os.path.exists(xml_path):
+        logging.warning("{} do not have xml!".format(img_path))
+        return sample
+
+    sample["metadata"]["xml_path"]=xml_path
+    _, objs_info = parse_xml_info(xml_path)
+    label_info = objs_infomap2foDetections(objs_info, img_meta)
+    sample.add_labels(label_info,label_field="ground_truth")
+
+    return sample
