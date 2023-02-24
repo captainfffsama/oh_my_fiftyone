@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-24 10:28:41
-@LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
-@LastEditTime: 2023-02-24 13:23:03
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-24 15:22:11
 @FilePath: /dataset_manager/core/dataset_generator.py
 @Description:
 '''
@@ -40,7 +40,7 @@ def generate_dataset(data_dir,name=None,use_importer=False):
                     if idx!=0 and (not idx%SAMPLE_MAX_CACHE):
                         dataset.add_samples(sample_cache)
                         sample_cache.clear()
-                dataset.add_samples(sample_cache)
+                dataset.add_samples(sample_cache,dynamic=True)
                 sample_cache.clear()
 
 

@@ -30,6 +30,8 @@ def main():
                 t2=yes_no_dialog(title="老实交代覆不覆盖数据库",text="{} 数据集已经存在,继续将覆盖已有的数据集,是否继续?")
                 if not t2:
                     continue
+            if not t1:
+                t1=None
             with timeblock():
                 dataset = generate_dataset(text,name=t1)
             print("dataset load done")
@@ -39,7 +41,8 @@ def main():
                 continue
             else:
                 dataset = fo.load_dataset(text)
-        session = fo.launch_app(dataset=dataset,address="0.0.0.0",auto=False)
+        session = fo.launch_app(dataset=dataset,address="0.0.0.0",remote=True,auto=True)
+        print(dataset.first().field_names)
         embed()
         session.close()
 

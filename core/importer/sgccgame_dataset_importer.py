@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
-@LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
-@LastEditTime: 2023-02-24 13:23:40
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-24 15:42:36
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -18,9 +18,11 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 
 from core.utils import get_all_file_path, parse_xml_info, parse_img_metadata, normalization_xyxy
-logging.disable()
+# logging.disable()
 
 class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
+    """使用官方API读入数据,但是似乎有性能瓶颈,不推荐使用
+    """
 
     def __init__(self,
                  dataset_dir: Optional[str] = None,
@@ -71,10 +73,11 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
         img_meta["xml_path"]=current_xml_path
         _, objs_info = parse_xml_info(current_xml_path)
-        label_info = objs_infomap2foDetections(objs_info, img_meta)
+        label_info,wrong_obj_flag = objs_infomap2foDetections(objs_info, img_meta)
 
         return current_img_path, img_meta, {
             "ground_truth": label_info,
+            "test_filed": {"wrong_obj":wrong_obj_flag}
         }
 
     @property
@@ -101,8 +104,9 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
 
 def objs_infomap2foDetections(
-        objs_info: dict, img_metadata: fom.ImageMetadata) -> fol.Detections:
+        objs_info: dict, img_metadata: fom.ImageMetadata) -> Tuple[fol.Detections,bool]:
     result = []
+    no_wrong_obj=True
     for k, v in objs_info.items():
         for obj in v:
             bbox, flag = normalization_xyxy(obj, img_metadata.width,
@@ -114,12 +118,13 @@ def objs_infomap2foDetections(
                     fol.Detection(label=k,
                                   bounding_box=bbox,
                                   ori_data_prob=True))
+                no_wrong_obj=False
             else:
                 result.append(
                     fol.Detection(label=k,
                                   bounding_box=bbox,
                                   ori_data_prob=False))
-    return fol.Detections(detections=result)
+    return fol.Detections(detections=result),no_wrong_obj
 
 
 def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
@@ -139,9 +144,12 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
         logging.warning("{} do not have xml!".format(img_path))
         return sample
 
+    # sample["metadata"].set_field("xml_path",xml_path)
     sample["metadata"]["xml_path"]=xml_path
     _, objs_info = parse_xml_info(xml_path)
-    label_info = objs_infomap2foDetections(objs_info, img_meta)
-    sample.add_labels(label_info,label_field="ground_truth")
+    label_info,no_wrong_obj = objs_infomap2foDetections(objs_info, img_meta)
+    sample.add_labels(dict(ground_truth=label_info))
+    if not no_wrong_obj:
+        sample["wrong_obj"]=True
 
     return sample
