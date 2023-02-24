@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-24 10:28:41
-@LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-24 12:14:08
+@LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
+@LastEditTime: 2023-02-24 13:23:03
 @FilePath: /dataset_manager/core/dataset_generator.py
 @Description:
 '''
@@ -15,7 +15,7 @@ import fiftyone as fo
 from core.importer import SGCCGameDatasetImporter,generate_sgcc_sample
 from core.utils import get_all_file_path,timeblock
 
-SAMPLE_MAX_CACHE=10000
+SAMPLE_MAX_CACHE=30000
 
 def generate_dataset(data_dir,name=None,use_importer=False):
     if use_importer:

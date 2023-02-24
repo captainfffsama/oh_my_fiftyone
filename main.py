@@ -6,6 +6,9 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter,PathCompleter
 from prompt_toolkit import print_formatted_text as print
+from prompt_toolkit.shortcuts import yes_no_dialog
+
+from core.utils import timeblock
 
 
 def main():
@@ -19,17 +22,26 @@ def main():
                                      complete_in_thread=True)
         if "None"==text:
             text = prompt_session.prompt('请输入数据集路径:',completer=PathCompleter(),complete_in_thread=True)
+            t1=prompt_session.prompt('请输入数据集名称:')
             # text= "/home/chiebotgpuhq/tmp_space/fif_test_data"
-            dataset = generate_dataset(text)
+            repr(t1)
+
+            if t1 in fo.list_datasets():
+                t2=yes_no_dialog(title="老实交代覆不覆盖数据库",text="{} 数据集已经存在,继续将覆盖已有的数据集,是否继续?")
+                if not t2:
+                    continue
+            with timeblock():
+                dataset = generate_dataset(text,name=t1)
             print("dataset load done")
         else:
             if text not in fo.list_datasets():
-                print("没有 {} 这个数据集".fotmat(text))
+                print("没有 {} 这个数据集,请选 None 然后输入数据集地址".format(text))
                 continue
             else:
-                dataset = fo.load_dataset("data_tmp")
-        session = fo.launch_app(dataset=dataset)
+                dataset = fo.load_dataset(text)
+        session = fo.launch_app(dataset=dataset,address="0.0.0.0",auto=False)
         embed()
+        session.close()
 
 if __name__ == '__main__':
     main()

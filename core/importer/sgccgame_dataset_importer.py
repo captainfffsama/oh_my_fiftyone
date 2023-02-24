@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
-@LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-24 11:09:32
+@LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
+@LastEditTime: 2023-02-24 13:23:40
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -18,7 +18,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 
 from core.utils import get_all_file_path, parse_xml_info, parse_img_metadata, normalization_xyxy
-
+logging.disable()
 
 class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
@@ -75,7 +75,6 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
         return current_img_path, img_meta, {
             "ground_truth": label_info,
-            "test_filed": "aaaa"
         }
 
     @property
