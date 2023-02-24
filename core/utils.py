@@ -1,4 +1,6 @@
 from typing import Tuple
+import time
+from contextlib import contextmanager
 import os
 import xml.etree.ElementTree as ET
 
@@ -135,3 +137,16 @@ def normalization_xyxy(
         flag = False
 
     return (xmin/w,ymin/h,(xmax-xmin)/w,(ymax-ymin)/h),flag
+
+@contextmanager
+def timeblock(label:str = '\033[1;34mSpend time:\033[0m'):
+    r'''上下文管理测试代码块运行时间,需要
+        import time
+        from contextlib import contextmanager
+    '''
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        end = time.perf_counter()
+        print('\033[1;34m{} : {}\033[0m'.format(label, end - start))
