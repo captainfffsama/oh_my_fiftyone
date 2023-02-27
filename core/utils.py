@@ -1,3 +1,4 @@
+import hashlib
 from typing import Tuple
 import time
 from contextlib import contextmanager
@@ -150,3 +151,13 @@ def timeblock(label:str = '\033[1;34mSpend time:\033[0m'):
     finally:
         end = time.perf_counter()
         print('\033[1;34m{} : {}\033[0m'.format(label, end - start))
+
+
+def md5sum(count_str:str) -> str:
+    m = hashlib.md5()
+    if os.path.isfile(count_str):
+        with open(count_str,'rb') as frb:
+            m.update(frb.read())
+    else:
+        m.update(count_str.encode('utf-8'))
+    return m.hexdigest()
