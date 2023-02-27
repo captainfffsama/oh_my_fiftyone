@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-24 10:28:41
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-27 17:33:08
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-27 18:56:19
 @FilePath: /dataset_manager/core/dataset_generator.py
 @Description:
 '''
@@ -19,7 +19,7 @@ from core.utils import get_all_file_path,timeblock
 
 SAMPLE_MAX_CACHE=60000
 
-def generate_dataset(data_dir,name=None,use_importer=False):
+def generate_dataset(data_dir,name=None,use_importer=False,persistent=True):
     """不推荐使用 importer导入
 
     Args:
@@ -55,5 +55,5 @@ def generate_dataset(data_dir,name=None,use_importer=False):
             sample_cache.clear()
 
 
-    dataset.persistent=True
+    dataset.persistent=persistent
     return dataset

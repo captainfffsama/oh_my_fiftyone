@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-27 15:37:04
+@LastEditTime: 2023-02-27 18:48:42
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -149,8 +149,6 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
     _, objs_info = parse_xml_info(xml_path)
     label_info,no_wrong_obj = objs_infomap2foDetections(objs_info, img_meta)
     sample.add_labels(dict(ground_truth=label_info))
-    if not no_wrong_obj:
-        sample["wrong_obj"]=True
 
     if not os.path.exists(anno_path):
         logging.debug("{} do not have anno!".format(img_path))
