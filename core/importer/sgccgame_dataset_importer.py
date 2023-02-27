@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
-@LastEditors: 198-server 198-server@server.com
-@LastEditTime: 2023-02-27 15:15:27
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-27 15:37:04
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -18,7 +18,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 
 from core.utils import get_all_file_path, parse_xml_info, parse_img_metadata, normalization_xyxy,md5sum
-import logging
+from core.logging import logging
 # logging.disable()
 class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
     """使用官方API读入数据,但是似乎有性能瓶颈,不推荐使用
@@ -159,7 +159,9 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
     with open(anno_path, 'r') as fr:
         anno=json.load(fr)
     sample["chiebot_ID"]=anno.get("ID","game_"+md5sum(img_path))
-    sample["data_source"]=anno.get("data_source",None)
+    data_source=anno.get("data_source",None)
+    data_source= [data_source] if isinstance(data_source,str) else data_source
+    sample["data_source"]=data_source
     sample["img_quality"]=anno.get("img_quality",0)
     sample["additions"]=anno.get("additions",None)
 

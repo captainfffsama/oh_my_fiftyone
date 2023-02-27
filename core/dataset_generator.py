@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-24 10:28:41
-@LastEditors: 198-server 198-server@server.com
-@LastEditTime: 2023-02-27 14:23:44
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-27 15:44:33
 @FilePath: /dataset_manager/core/dataset_generator.py
 @Description:
 '''
@@ -15,7 +15,7 @@ import fiftyone as fo
 from core.importer import SGCCGameDatasetImporter,generate_sgcc_sample
 from core.utils import get_all_file_path,timeblock
 
-SAMPLE_MAX_CACHE=30000
+SAMPLE_MAX_CACHE=50000
 
 def generate_dataset(data_dir,name=None,use_importer=False):
     """不推荐使用 importer导入
@@ -30,7 +30,7 @@ def generate_dataset(data_dir,name=None,use_importer=False):
     """
     if use_importer:
         importer= SGCCGameDatasetImporter(dataset_dir=data_dir)
-        dataset=fo.Dataset.from_importer(importer,name=name,overwrite=True,persistent=True)
+        dataset=fo.Dataset.from_importer(importer,name=name,overwrite=True)
     else:
         imgs_path = get_all_file_path(data_dir,
                                       filter_=(".jpg", ".JPG", ".png",
@@ -38,7 +38,7 @@ def generate_dataset(data_dir,name=None,use_importer=False):
                                                ".jpeg", ".JPEG"))
         imgs_path.sort()
         sample_cache=[]
-        dataset=fo.Dataset(name=name,overwrite=True,persistent=True)
+        dataset=fo.Dataset(name=name,overwrite=True)
         with ProgressBar(title="数据集解析进度:") as pbar:
             with futures.ThreadPoolExecutor(48) as exec:
                 tasks=[exec.submit(generate_sgcc_sample,img_path) for img_path in imgs_path]
@@ -54,4 +54,5 @@ def generate_dataset(data_dir,name=None,use_importer=False):
                 sample_cache.clear()
 
 
+    # dataset.persistent=True
     return dataset
