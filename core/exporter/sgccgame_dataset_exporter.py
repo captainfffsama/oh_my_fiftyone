@@ -2,118 +2,137 @@
 '''
 @Author: captainsama
 @Date: 2023-02-27 16:20:02
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-27 16:25:36
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-02-28 18:36:11
 @FilePath: /dataset_manager/core/exporter/sgccgame_dataset_exporter.py
 @Description:
 '''
+import os
+import fiftyone.core.metadata as fom
 import fiftyone.utils.data as foud
+import fiftyone.utils.voc as fouvoc
 import fiftyone.core.labels as fol
 
-class SGCCGameDatasetExporter(foud.LabeledImageDatasetExporter):
-    """Custom exporter for labeled image datasets.
+
+class SGCCGameDatasetExporter(fouvoc.VOCDetectionDatasetExporter):
+    """Exporter that writes VOC detection datasets to disk.
+
+    See :ref:`this page <VOCDetectionDataset-export>` for format details.
 
     Args:
-        export_dir (None): the directory to write the export. This may be
-            optional for some exporters
-        **kwargs: additional keyword arguments for your exporter
+        export_dir (None): the directory to write the export. This has no
+            effect if ``data_path`` and ``labels_path`` are absolute paths
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the exported media. Can be any of the
+            following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``export_dir`` in which to export the media
+            -   an absolute directory path in which to export the media. In
+                this case, the ``export_dir`` has no effect on the location of
+                the data
+            -   a JSON filename like ``"data.json"`` specifying the filename of
+                the manifest file in ``export_dir`` generated when
+                ``export_media`` is ``"manifest"``
+            -   an absolute filepath specifying the location to write the JSON
+                manifest file when ``export_media`` is ``"manifest"``. In this
+                case, ``export_dir`` has no effect on the location of the data
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``export_media`` parameter
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the exported labels. Can be any of the
+            following:
+
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying the
+                location in ``export_dir`` in which to export the labels
+            -   an absolute folder path to which to export the labels. In this
+                case, the ``export_dir`` has no effect on the location of the
+                labels
+
+            If None, the labels will be exported into ``export_dir`` using the
+            default folder name
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True``: copy all media files into the output directory
+            -   ``False``: don't export media
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+            -   ``"manifest"``: create a ``data.json`` in the output directory
+                that maps UUIDs used in the labels files to the filepaths of
+                the source media, rather than exporting the actual media
+
+            If None, the default value of this parameter will be chosen based
+            on the value of the ``data_path`` parameter
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each image. When
+            exporting media, this identifier is joined with ``data_path`` and
+            ``labels_path`` to generate output paths for each exported image
+            and labels file. This argument allows for populating nested
+            subdirectories that match the shape of the input paths. The path is
+            converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.utils.normalize_path`
+        include_paths (True): whether to include the absolute paths to the
+            images in the ``<path>`` elements of the exported XML
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        extra_attrs (True): whether to include extra object attributes in the
+            exported labels. Supported values are:
+
+            -   ``True``: export all extra attributes found
+            -   ``False``: do not export extra attributes
+            -   a name or list of names of specific attributes to export
     """
 
-    def __init__(self, export_dir=None, **kwargs):
-        super().__init__(export_dir=export_dir)
-        self._export_dir=export_dir
+    def __init__(
+        self,
+        export_dir=None,
+        data_path=None,
+        labels_path=None,
+        export_media=None,
+        rel_dir=None,
+        include_paths=True,
+        image_format=None,
+        extra_attrs=False,
+    ):
+        super().__init__(
+            export_dir,
+            data_path,
+            labels_path,
+            export_media,
+            rel_dir,
+            include_paths,
+            image_format,
+            extra_attrs,
+        )
+        self._export_dir = export_dir
 
-    @property
-    def requires_image_metadata(self):
-        """Whether this exporter requires
-        :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
-        being exported.
-        """
-        # Return True or False here
-        True
+    def export_sample(self, image_or_path, detections, metadata=None):
+        out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-    @property
-    def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class(es) exported by this
-        exporter.
+        if detections is None:
+            return
 
-        This can be any of the following:
+        out_labels_path = os.path.join(
+            self.labels_path, os.path.splitext(uuid)[0] + ".xml"
+        )
 
-        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            exporter directly exports labels of this type
-        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
-            this case, the exporter can export a single label field of any of
-            these types
-        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-            In this case, the exporter can handle label dictionaries with
-            value-types specified by this dictionary. Not all keys need be
-            present in the exported label dicts
-        -   ``None``. In this case, the exporter makes no guarantees about the
-            labels that it can export
-        """
-        # Return the appropriate value here
-        return fol.Detections
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(image_or_path)
 
-    def setup(self):
-        """Performs any necessary setup before exporting the first sample in
-        the dataset.
+        if self.include_paths:
+            path = out_image_path
+        else:
+            path = None
 
-        This method is called when the exporter's context manager interface is
-        entered, :func:`DatasetExporter.__enter__`.
-        """
-        # Your custom setup here
-        pass
-
-    def log_collection(self, sample_collection):
-        """Logs any relevant information about the
-        :class:`fiftyone.core.collections.SampleCollection` whose samples will
-        be exported.
-
-        Subclasses can optionally implement this method if their export format
-        can record information such as the
-        :meth:`fiftyone.core.collections.SampleCollection.name` and
-        :meth:`fiftyone.core.collections.SampleCollection.info` of the
-        collection being exported.
-
-        By convention, this method must be optional; i.e., if it is not called
-        before the first call to :meth:`export_sample`, then the exporter must
-        make do without any information about the
-        :class:`fiftyone.core.collections.SampleCollection` (which may not be
-        available, for example, if the samples being exported are not stored in
-        a collection).
-
-        Args:
-            sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` whose
-                samples will be exported
-        """
-        # Log any information from the sample collection here
-        pass
-
-    def export_sample(self, image_or_path, label, metadata=None):
-        """Exports the given sample to the dataset.
-
-        Args:
-            image_or_path: an image or the path to the image on disk
-            label: an instance of :meth:`label_cls`, or a dictionary mapping
-                field names to :class:`fiftyone.core.labels.Label` instances,
-                or ``None`` if the sample is unlabeled
-            metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                instance for the sample. Only required when
-                :meth:`requires_image_metadata` is ``True``
-        """
-        # Export the provided sample
-        pass
-
-    def close(self, *args):
-        """Performs any necessary actions after the last sample has been
-        exported.
-
-        This method is called when the importer's context manager interface is
-        exited, :func:`DatasetExporter.__exit__`.
-
-        Args:
-            *args: the arguments to :func:`DatasetExporter.__exit__`
-        """
-        # Your custom code here to complete the export
-        pass
+        annotation = fouvoc.VOCAnnotation.from_labeled_image(
+            metadata,
+            detections,
+            path=path,
+            filename=uuid,
+            extra_attrs=self.extra_attrs,
+        )
+        self._writer.write(annotation, out_labels_path)

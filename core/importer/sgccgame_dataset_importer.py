@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-27 18:48:42
+@LastEditTime: 2023-02-28 17:28:18
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -144,8 +144,6 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
         logging.warning("{} do not have xml!".format(img_path))
         return sample
 
-    # sample["metadata"].set_field("xml_path",xml_path)
-    sample["metadata"]["xml_path"]=xml_path
     _, objs_info = parse_xml_info(xml_path)
     label_info,no_wrong_obj = objs_infomap2foDetections(objs_info, img_meta)
     sample.add_labels(dict(ground_truth=label_info))
@@ -162,5 +160,6 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
     sample["data_source"]=data_source
     sample["img_quality"]=anno.get("img_quality",0)
     sample["additions"]=anno.get("additions",None)
+    sample["xml_md5"]=md5sum(xml_path)
 
     return sample

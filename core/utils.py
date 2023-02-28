@@ -94,8 +94,7 @@ def parse_img_metadata(img_path) -> fom.ImageMetadata:
                              width=img.width,
                              height=img.height,
                              num_channels=PIL_MODE_CHANNEL_MAP.get(
-                                 img.mode, "3"),
-                             img_path=img_path)
+                                 img.mode, "3"))
 
 
 def normalization_xyxy(
@@ -161,3 +160,10 @@ def md5sum(count_str:str) -> str:
     else:
         m.update(count_str.encode('utf-8'))
     return m.hexdigest()
+
+
+def get_sample_field(sample,field,default=None):
+    if sample.has_field(field):
+        return sample.get_field(field)
+    else:
+        return default
