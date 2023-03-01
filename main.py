@@ -1,6 +1,8 @@
 from functools import partial
+import time
 
 import fiftyone as fo
+import fiftyone.core.dataset as focd
 from IPython import embed
 from core.dataset_generator import generate_dataset
 from prompt_toolkit import PromptSession, prompt
@@ -57,6 +59,7 @@ def add_data2exsist_dataset():
             HTML('''
     <ansigreen>没有现成的数据集,没法追加数据集,请先创建数据集</ansigreen>
                                   '''))
+        time.sleep(1)
 
 
 def check_exsist_dataset():
@@ -76,6 +79,7 @@ def check_exsist_dataset():
             HTML('''
     <ansigreen>没有现成的数据集</ansigreen>
                                   '''))
+        time.sleep(1)
 
 
 def init_new_dataset():
@@ -100,20 +104,49 @@ def init_new_dataset():
     launch_dataset(dataset)
 
 
+def delete_exsist_dataset():
+    prompt_session = PromptSession()
+    exist_dataset = fo.list_datasets()
+    if exist_dataset:
+        valida = Validator.from_callable(lambda x: x in exist_dataset,
+                                         error_message="没有这个数据集")
+        text = prompt_session.prompt('请输入需要删除的数据集名称,按Tab补全选:',
+                                     completer=WordCompleter(exist_dataset),
+                                     complete_in_thread=True,
+                                     validator=valida)
+
+        t2 = yes_no_dialog(title="你真的要删库跑路吗?你最好想想你在做什么!",
+                           text="确定删除{}数据库吗?".format(text)).run()
+        if t2:
+            focd.delete_dataset(text)
+            print_formatted_text(
+                HTML('''
+        <red>删除{}数据库成功!!</red>
+                                    '''.format(text)))
+            time.sleep(1)
+    else:
+        print_formatted_text(
+            HTML('''
+    <ansigreen>没有现成的数据集</ansigreen>
+                                  '''))
+        time.sleep(1)
+
+
 def main():
     prompt_session = PromptSession()
     function_map = {
         "1": add_data2exsist_dataset,
         "2": check_exsist_dataset,
-        "3": init_new_dataset
+        "3": init_new_dataset,
+        "4": delete_exsist_dataset,
     }
     while True:
         main_vali = Validator.from_callable(partial(number_in_ranger,
                                                     min=1,
-                                                    max=3),
+                                                    max=len(
+                                                        function_map.keys())),
                                             error_message="瞎输啥编号呢,用退格删了重输")
-        main_win_select = prompt_session.prompt(
-            HTML('''
+        main_win_show = HTML('''
 ===========================================
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⡴⠞⠉⢉⣭⣿⣿⠿⣳⣤⠴⠖⠛⣛⣿⣿⡷⠖⣶⣤⡀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⣼⠁⢀⣶⢻⡟⠿⠋⣴⠿⢻⣧⡴⠟⠋⠿⠛⠠⠾⢛⣵⣿⠀⠀⠀⠀
@@ -136,11 +169,18 @@ def main():
         1. 添加新的数据到已有数据集
         2. 查看已有数据集
         3. 建立新的数据集
+        4. 删除已有数据集
 ===========================================
-        请输入要做事情的编号:'''),
-            completer=WordCompleter([str(i) for i in range(1, 4)]),
-            validator=main_vali)
-        function_map[main_win_select]()
+        请输入要做事情的编号:''')
+
+        main_win_select = prompt_session.prompt(main_win_show,
+                                                completer=WordCompleter(
+                                                    function_map.keys()),
+                                                validator=main_vali)
+        try:
+            function_map[main_win_select]()
+        except KeyboardInterrupt as e:
+            continue
 
 
 if __name__ == '__main__':
