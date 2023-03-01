@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-28 17:28:18
+@LastEditTime: 2023-03-01 10:35:52
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -17,8 +17,10 @@ import fiftyone.utils.data as foud
 import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 
-from core.utils import get_all_file_path, parse_xml_info, parse_img_metadata, normalization_xyxy,md5sum
+from core.utils import get_all_file_path, parse_xml_info, parse_img_metadata, normalization_xyxy, md5sum
 from core.logging import logging
+
+
 # logging.disable()
 class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
     """使用官方API读入数据,但是似乎有性能瓶颈,不推荐使用
@@ -71,13 +73,16 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
             logging.warning("{} do not have xml!".format(current_img_path))
             return current_img_path, img_meta, None
 
-        img_meta["xml_path"]=current_xml_path
+        img_meta["xml_path"] = current_xml_path
         _, objs_info = parse_xml_info(current_xml_path)
-        label_info,wrong_obj_flag = objs_infomap2foDetections(objs_info, img_meta)
+        label_info, wrong_obj_flag = objs_infomap2foDetections(
+            objs_info, img_meta)
 
         return current_img_path, img_meta, {
             "ground_truth": label_info,
-            "test_filed": {"wrong_obj":wrong_obj_flag}
+            "test_filed": {
+                "wrong_obj": wrong_obj_flag
+            }
         }
 
     @property
@@ -104,9 +109,10 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
 
 
 def objs_infomap2foDetections(
-        objs_info: dict, img_metadata: fom.ImageMetadata) -> Tuple[fol.Detections,bool]:
+        objs_info: dict,
+        img_metadata: fom.ImageMetadata) -> Tuple[fol.Detections, bool]:
     result = []
-    no_wrong_obj=True
+    no_wrong_obj = True
     for k, v in objs_info.items():
         for obj in v:
             bbox, flag = normalization_xyxy(obj, img_metadata.width,
@@ -118,25 +124,30 @@ def objs_infomap2foDetections(
                     fol.Detection(label=k,
                                   bounding_box=bbox,
                                   ori_data_prob=True))
-                no_wrong_obj=False
+                no_wrong_obj = False
             else:
                 result.append(
                     fol.Detection(label=k,
                                   bounding_box=bbox,
                                   ori_data_prob=False))
-    return fol.Detections(detections=result),no_wrong_obj
+    return fol.Detections(detections=result), no_wrong_obj
 
 
-def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
+def generate_sgcc_sample(img_path,
+                         extra_attr: Optional[dict] = None
+                         ) -> Optional[fo.Sample]:
 
-    sample=None
+    sample = None
 
     if not os.path.exists(img_path):
         logging.warning("{} is not exists".format(img_path))
         return sample
 
     img_meta = parse_img_metadata(img_path)
-    sample=fo.Sample(filepath=img_path,metadata=img_meta)
+    sample = fo.Sample(filepath=img_path, metadata=img_meta)
+    if extra_attr:
+        for k, v in extra_attr.items():
+            sample[k] = v
     anno_path = os.path.splitext(img_path)[0] + ".anno"
 
     xml_path = os.path.splitext(img_path)[0] + ".xml"
@@ -145,21 +156,26 @@ def generate_sgcc_sample(img_path) -> Optional[fo.Sample]:
         return sample
 
     _, objs_info = parse_xml_info(xml_path)
-    label_info,no_wrong_obj = objs_infomap2foDetections(objs_info, img_meta)
+    label_info, no_wrong_obj = objs_infomap2foDetections(objs_info, img_meta)
     sample.add_labels(dict(ground_truth=label_info))
+
+    sample["xml_md5"] = md5sum(xml_path)
 
     if not os.path.exists(anno_path):
         logging.debug("{} do not have anno!".format(img_path))
+        sample["chiebot_ID"] = "game_" + md5sum(
+            img_path) if not os.path.basename(img_path).startswith(
+                "game_") else os.path.basename(img_path)
         return sample
 
     with open(anno_path, 'r') as fr:
-        anno=json.load(fr)
-    sample["chiebot_ID"]=anno.get("ID","game_"+md5sum(img_path))
-    data_source=anno.get("data_source",None)
-    data_source= [data_source] if isinstance(data_source,str) else data_source
-    sample["data_source"]=data_source
-    sample["img_quality"]=anno.get("img_quality",0)
-    sample["additions"]=anno.get("additions",None)
-    sample["xml_md5"]=md5sum(xml_path)
+        anno = json.load(fr)
+    sample["chiebot_ID"] = anno.get("ID", "game_" + md5sum(img_path))
+    data_source = anno.get("data_source", None)
+    data_source = [data_source] if isinstance(data_source,
+                                              str) else data_source
+    sample["data_source"] = data_source
+    sample["img_quality"] = anno.get("img_quality", 0)
+    sample["additions"] = anno.get("additions", None)
 
     return sample

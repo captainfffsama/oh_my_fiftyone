@@ -2,8 +2,8 @@
 '''
 @Author: 198-server
 @Date: 2023-02-27 15:09:54
-@LastEditors: 198-server 198-server@server.com
-@LastEditTime: 2023-02-27 15:53:54
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-01 10:20:10
 @FilePath: /dataset_manager/core/logging.py
 @Description:
 '''
@@ -11,8 +11,10 @@ import datetime
 from loguru import logger
 
 logger.remove(handler_id=None)
-logger.add('/tmp/dataset_manager_{}.log'.format(datetime.date.today()),enqueue=True)
+logging_path='/tmp/dataset_manager_{}.log'.format(datetime.date.today())
+logger.add(logging_path,enqueue=True)
 logging=logger
+
 
 # import logging
 

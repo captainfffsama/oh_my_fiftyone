@@ -37,9 +37,9 @@ def add_data2exsist_dataset():
                                  validator=None)
     exist_dataset = fo.list_datasets()
 
-    valida = Validator.from_callable(lambda x: x in exist_dataset,
-                                     error_message="没有这个数据集")
     if exist_dataset:
+        valida = Validator.from_callable(lambda x: x in exist_dataset,
+                                         error_message="没有这个数据集")
         t1 = prompt_session.prompt('请输入要导入的数据集名称:',
                                    validator=valida,
                                    completer=WordCompleter(exist_dataset),

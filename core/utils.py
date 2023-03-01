@@ -18,7 +18,7 @@ def get_all_file_path(file_dir: str, filter_=('.jpg')) -> list:
             if os.path.splitext(filename)[1] in filter_ ]
     elif os.path.isfile(file_dir):
         with open(file_dir, 'r') as fr:
-            paths = [x.strip() for x in fr.readlines()]
+            paths = [x.strip() for x in fr.readlines() if os.path.splitext(x.strip())[1] in filter_]
         return paths
     else:
         raise ValueError("{} should be dir or a txt file".format(file_dir))

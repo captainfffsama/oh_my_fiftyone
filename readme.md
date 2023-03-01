@@ -7,5 +7,7 @@ A simple dataset manager base on fiftyone
 - loguru
 
 # TODO
-- [ ] record extra info
+- [x] record extra info
+- [ ] custom annotation proto,can use labelimg ,labelme,labelhomo
+- [ ] optimize tools api
 
