@@ -1,5 +1,6 @@
+[中文](./readme.md)   [English](./readme_EN.md)
 # Introduction
-A simple dataset manager base on fiftyone
+基于 fiftyone 写的一个管理数据的小东西
 
 # requirements
 - fiftyone
@@ -7,7 +8,6 @@ A simple dataset manager base on fiftyone
 - loguru
 
 # TODO
-- [x] record extra info
-- [ ] custom annotation proto,can use labelimg ,labelme,labelhomo
-- [ ] optimize tools api
-
+- [x] 记录额外信息
+- [ ] 自定义后端proto来支持labelimg,labelme,labelhomo 之类的工具
+- [ ] 优化一些工具api的使用
