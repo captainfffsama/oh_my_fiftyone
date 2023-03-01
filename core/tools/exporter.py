@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 16:52:46
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-02-28 18:33:23
+@LastEditTime: 2023-03-01 14:37:06
 @FilePath: /dataset_manager/core/tools/exporter.py
 @Description:
 '''
@@ -21,17 +21,19 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 
 def _export_one_sample_anno(sample, save_dir):
     result = {}
-    need_export_map = ("data_source", "img_quality", "additions")
+    need_export_map = {
+        "data_source": "data_source",
+        "img_quality": "img_quality",
+        "additions": "additions",
+        "tags": "sample_tags",
+        "chiebot_ID": "ID"
+    }
 
-    for i in need_export_map:
-        v = get_sample_field(sample, i)
-        if v:
-            result[i] = v
+    for k,v in need_export_map.items():
+        vv = get_sample_field(sample, k)
+        if vv:
+            result[v] = vv
 
-    chiebot_id = get_sample_field(sample, "chiebot_ID")
-    if chiebot_id is None:
-        raise ValueError("{} sample lack id".format(sample.filename))
-    result["ID"] = chiebot_id
     result["img_shape"] = (sample["metadata"].height, sample["metadata"].width,
                            sample["metadata"].num_channels)
     result["objs_info"] = []
@@ -52,9 +54,10 @@ def _export_one_sample_anno(sample, save_dir):
 
             result["objs_info"].append(obj)
 
-    save_path=os.path.join(save_dir,os.path.splitext(sample.filename)[0]+".anno")
+    save_path = os.path.join(save_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno")
     with open(save_path, 'w') as fw:
-        json.dump(result,fw,indent=4,sort_keys=True)
+        json.dump(result, fw, indent=4, sort_keys=True)
 
 
 def export_anno_file(dataset: focd.Dataset, save_dir: str):
@@ -74,7 +77,8 @@ def export_anno_file(dataset: focd.Dataset, save_dir: str):
         for task in tqdm(futures.as_completed(tasks), total=len(dataset)):
             result = task.result()
 
-def _export_one_sample(sample,exporter,get_anno,save_dir):
+
+def _export_one_sample(sample, exporter, get_anno, save_dir):
     image_path = sample.filepath
 
     metadata = sample.metadata
@@ -87,9 +91,13 @@ def _export_one_sample(sample,exporter,get_anno,save_dir):
     exporter.export_sample(image_path, label, metadata=metadata)
 
     if get_anno:
-        _export_one_sample_anno(sample,save_dir)
+        _export_one_sample_anno(sample, save_dir)
 
-def export_sample(dataset: focd.Dataset,save_dir:str,get_anno=True,**kwargs):
+
+def export_sample(dataset: focd.Dataset,
+                  save_dir: str,
+                  get_anno=True,
+                  **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
     Args:
@@ -102,13 +110,15 @@ def export_sample(dataset: focd.Dataset,save_dir:str,get_anno=True,**kwargs):
         os.mkdir(save_dir)
     if "export_dir" in kwargs:
         kwargs.pop("export_dir")
-    exporter=SGCCGameDatasetExporter(export_dir=save_dir,**kwargs)
+    exporter = SGCCGameDatasetExporter(export_dir=save_dir, **kwargs)
     with exporter:
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(16) as exec:
             tasks = [
-                exec.submit(_export_one_sample, sample,exporter,get_anno, save_dir)
-                for sample in dataset
+                exec.submit(_export_one_sample, sample, exporter, get_anno,
+                            save_dir) for sample in dataset
             ]
-            for task in tqdm(futures.as_completed(tasks), total=len(dataset),desc="样本导出进度:"):
+            for task in tqdm(futures.as_completed(tasks),
+                             total=len(dataset),
+                             desc="样本导出进度:"):
                 result = task.result()

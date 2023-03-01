@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-01 10:35:52
+@LastEditTime: 2023-03-01 15:48:01
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -175,7 +175,8 @@ def generate_sgcc_sample(img_path,
     data_source = [data_source] if isinstance(data_source,
                                               str) else data_source
     sample["data_source"] = data_source
-    sample["img_quality"] = anno.get("img_quality", 0)
+    sample["img_quality"] = int(anno.get("img_quality", 0))
     sample["additions"] = anno.get("additions", None)
+    sample["tags"]=anno.get("sample_tags",[])
 
     return sample

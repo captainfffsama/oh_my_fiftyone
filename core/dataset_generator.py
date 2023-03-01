@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-24 10:28:41
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-01 11:06:48
+@LastEditTime: 2023-03-01 13:47:43
 @FilePath: /dataset_manager/core/dataset_generator.py
 @Description:
 '''
@@ -43,11 +43,10 @@ def generate_dataset(data_dir,name=None,use_importer=False,persistent=True):
                                       filter_=(".jpg", ".JPG", ".png",
                                                ".PNG", ".bmp", ".BMP",
                                                ".jpeg", ".JPEG"))
-        extra_attr_cfg_file=get_all_file_path(data_dir,filter_=(".annocfg"))
+        extra_attr_cfg_file=get_all_file_path(data_dir,filter_=(".annocfg",))
 
         extra_attr=None
         if extra_attr_cfg_file:
-            breakpoint()
             if os.path.exists(extra_attr_cfg_file[0]):
                 with open(extra_attr_cfg_file[0],'r') as fr:
                     extra_attr=json.load(fr)
