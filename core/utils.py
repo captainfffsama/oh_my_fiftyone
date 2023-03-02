@@ -10,7 +10,8 @@ from PIL import Image
 import numpy as np
 
 
-def get_all_file_path(file_dir: str, filter_=('.jpg')) -> list:
+def get_all_file_path(file_dir: str, filter_=
+                      (".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",".JPEG")) -> list:
     #遍历文件夹下所有的file
     if os.path.isdir(file_dir):
         return [os.path.join(maindir,filename) for maindir,_,file_name_list in os.walk(file_dir) \

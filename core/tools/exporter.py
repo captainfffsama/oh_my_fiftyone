@@ -7,7 +7,7 @@
 @FilePath: /dataset_manager/core/tools/exporter.py
 @Description:
 """
-from typing import Optional
+from typing import Optional, Union
 
 import os
 import json
@@ -22,7 +22,7 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
-from core.importer import parse_sample_info,generate_sgcc_sample
+from core.importer import parse_sample_info, generate_sgcc_sample
 
 
 def _export_one_sample_anno(sample, save_dir):
@@ -39,6 +39,10 @@ def _export_one_sample_anno(sample, save_dir):
         vv = get_sample_field(sample, k)
         if vv:
             result[v] = vv
+
+    result["chiebot_sample_tags"] = get_sample_field(sample,
+                                                     "chiebot_sample_tags",
+                                                     default=[])
 
     result["img_shape"] = (
         sample["metadata"].height,
@@ -182,40 +186,36 @@ def update_dataset(dataset: Optional[focd.Dataset] = None):
             filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",
                      ".JPEG"),
         )
-        for img_path in tqdm(imgs_path,
-                desc="数据集更新进度:",
-                dynamic_ncols=True,
-                colour="green",
-        ):
-            if img_path in dataset:
-                sample=dataset[img_path]
-                xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
-                if not os.path.exists(xml_path):
-                    sample.clear_field("ground_truth")
-                    continue
-                xml_md5 = md5sum(xml_path)
-                if sample.has_field("xml_md5"):
-                    if sample.get_field("xml_md5") != xml_md5:
-                        img_meta, label_info, anno_dict = parse_sample_info(
-                            sample.filepath)
-                        sample.update_fields(anno_dict)
-                        sample.update_fields({
-                            "metadata": img_meta,
-                            "ground_truth": label_info,
-                            "xml_md5": xml_md5
-                        })
-                    sample.save()
-            else:
-                dataset.add_sample(generate_sgcc_sample(img_path))
+        with dataset.save_context() as context:
+            for img_path in tqdm(
+                    imgs_path,
+                    desc="数据集更新进度:",
+                    dynamic_ncols=True,
+                    colour="green",
+            ):
+                if img_path in dataset:
+                    sample = dataset[img_path]
+                    xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
+                    if not os.path.exists(xml_path):
+                        sample.clear_field("ground_truth")
+                        continue
+                    xml_md5 = md5sum(xml_path)
+                    if sample.has_field("xml_md5"):
+                        if sample.get_field("xml_md5") != xml_md5:
+                            img_meta, label_info, anno_dict = parse_sample_info(
+                                sample.filepath)
+                            sample.update_fields(anno_dict)
+                            sample.update_fields({
+                                "metadata": img_meta,
+                                "ground_truth": label_info,
+                                "xml_md5": xml_md5
+                            })
+                        context.save(sample)
+                else:
+                    dataset.add_sample(generate_sgcc_sample(img_path))
         dataset.save()
     else:
-        for sample in tqdm(
-                dataset,
-                total=len(dataset),
-                desc="数据集更新进度:",
-                dynamic_ncols=True,
-                colour="green",
-        ):
+        for sample in dataset.iter_samples(progress=True, autosave=True, batch_size=0.2):
             xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
             if not os.path.exists(xml_path):
                 sample.clear_field("ground_truth")
@@ -231,20 +231,64 @@ def update_dataset(dataset: Optional[focd.Dataset] = None):
                         "ground_truth": label_info,
                         "xml_md5": xml_md5
                     })
-            sample.save()
-        dataset.save()
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
 
-def get_select_dv() -> Optional[fo.DatasetView]:
-    """返回被选中的数据的视图
+
+def get_select_dv(txt_path:str=None) -> Optional[fo.DatasetView]:
+    """返回被选中的数据的视图,若有txt就返回txt中的,没有就是浏览器中选中的
+    Args:
+        txt_path (Optional[str]):txt是一个记录了图片路径的文本文件
 
     Returns:
         Optional[fo.DatasetView]: 返回被选中的数据的视图
     """
-    dataset = WEAK_CACHE.get("dataset",None)
-    session = WEAK_CACHE.get("session",None)
+
+    dataset = WEAK_CACHE.get("dataset", None)
+    session = WEAK_CACHE.get("session", None)
     if dataset and session:
-        return dataset.select(session.selected)
+        if txt_path is not None:
+            if os.path.exists(txt_path):
+                imgs_path=get_all_file_path(txt_path)
+                return dataset.select_by("filepath",imgs_path)
+        else:
+            return dataset.select(session.selected)
     return None
+
+
+def add_dataset_fields_by_txt(txt_path: str,
+                              fields_dict: Union[str, dict],
+                              dataset: Optional[focd.Dataset] = None):
+    """通过txt给特定数据集添加字段,txt中不在数据集的数据将被跳过
+
+    Args:
+        txt_path (str): 记录的图片路径的txt
+        fields_dict (Union[str, dict]): 可以是一个json或者一个dict
+        dataset (Optional[focd.Dataset], optional): 和其他函数一样,默认是全局数据集. Defaults to None.
+    """
+    if dataset is None:
+        dataset = WEAK_CACHE.get("dataset", None)
+        if dataset is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+    imgs_path = get_all_file_path(
+        txt_path,
+        filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",
+                    ".JPEG"),
+    )
+
+    if isinstance(fields_dict, str):
+        with open(fields_dict,"r") as fr:
+            fields_dict=json.load(fr)
+
+    with dataset.save_context() as context:
+        for sample in dataset.select_by("filepath",imgs_path):
+            for k,v in fields_dict.items():
+                sample[k]=v
+            context.save(sample)
+
+
+    session = WEAK_CACHE.get("session", None)
+    if session is not None:
+        session.refresh()
