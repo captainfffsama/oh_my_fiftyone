@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-02 12:27:52
+@LastEditTime: 2023-03-02 12:46:58
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -113,8 +113,6 @@ def objs_infomap2foDetections(
             bbox, flag = normalization_xyxy(obj, img_metadata.width,
                                             img_metadata.height)
             if not flag:
-                logging.warning("{} have wrong obj".format(
-                    img_metadata.img_path))
                 result.append(
                     fol.Detection(label=k,
                                   bounding_box=bbox,
