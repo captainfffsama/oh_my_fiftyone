@@ -7,6 +7,8 @@
 @FilePath: /dataset_manager/core/tools/exporter.py
 @Description:
 """
+from typing import Optional
+
 import os
 import json
 from concurrent import futures
@@ -15,8 +17,12 @@ import fiftyone as fo
 import fiftyone.core.dataset as focd
 from tqdm import tqdm
 
-from core.utils import get_sample_field
+from core.utils import get_sample_field, md5sum, get_all_file_path
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
+from core.logging import logging
+
+from core.cache import WEAK_CACHE
+from core.importer import parse_sample_info,generate_sgcc_sample
 
 
 def _export_one_sample_anno(sample, save_dir):
@@ -60,30 +66,40 @@ def _export_one_sample_anno(sample, save_dir):
 
             result["objs_info"].append(obj)
 
-    save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
+    save_path = os.path.join(save_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno")
     with open(save_path, "w") as fw:
         json.dump(result, fw, indent=4, sort_keys=True)
 
 
-def export_anno_file(dataset: focd.Dataset, save_dir: str):
+def export_anno_file(
+    save_dir: str,
+    dataset: Optional[focd.Dataset] = None,
+):
     """导出数据集的anno文件到 save_dir
 
     Args:
-        dataset (focd.Dataset): 需要导出的数据集
         save_dir (str): 保存anno的目录
+        dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
     """
+    if dataset is None:
+        dataset = WEAK_CACHE.get("dataset", None)
+        if dataset is None:
+            logging.warning("no dataset in cache,no thing export")
+            return
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
+            exec.submit(_export_one_sample_anno, sample, save_dir)
+            for sample in dataset
         ]
         for task in tqdm(
-            futures.as_completed(tasks),
-            total=len(dataset),
-            desc="anno导出进度:",
-            dynamic_ncols=True,
-            colour="green",
+                futures.as_completed(tasks),
+                total=len(dataset),
+                desc="anno导出进度:",
+                dynamic_ncols=True,
+                colour="green",
         ):
             result = task.result()
 
@@ -104,15 +120,23 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
         _export_one_sample_anno(sample, save_dir)
 
 
-def export_sample(dataset: focd.Dataset, save_dir: str, get_anno=True, **kwargs):
+def export_sample(save_dir: str,
+                  dataset: Optional[focd.Dataset] = None,
+                  get_anno=True,
+                  **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
     Args:
-        dataset (focd.Dataset): 需要导出的数据集
         save_dir (str): 导出文件的目录
+        dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
         get_anno (bool, optional): 是否导出anno. Defaults to True.
         **kwargs: 支持``SGCCGameDatasetExporter`` 的参数
     """
+    if dataset is None:
+        dataset = WEAK_CACHE.get("dataset", None)
+        if dataset is None:
+            logging.warning("no dataset in cache,no thing export")
+            return
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     if "export_dir" in kwargs:
@@ -122,14 +146,82 @@ def export_sample(dataset: focd.Dataset, save_dir: str, get_anno=True, **kwargs)
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(48) as exec:
             tasks = [
-                exec.submit(_export_one_sample, sample, exporter, get_anno, save_dir)
-                for sample in dataset
+                exec.submit(_export_one_sample, sample, exporter, get_anno,
+                            save_dir) for sample in dataset
             ]
             for task in tqdm(
-                futures.as_completed(tasks),
-                total=len(dataset),
-                desc="样本导出进度:",
-                dynamic_ncols=True,
-                colour="green",
+                    futures.as_completed(tasks),
+                    total=len(dataset),
+                    desc="样本导出进度:",
+                    dynamic_ncols=True,
+                    colour="green",
             ):
                 result = task.result()
+
+
+def update_dataset(dataset: Optional[focd.Dataset] = None):
+    if dataset is None:
+        dataset = WEAK_CACHE.get("dataset", None)
+        if dataset is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        dataset_dir = os.path.split(dataset.first().filepath)[0]
+        imgs_path = get_all_file_path(
+            dataset_dir,
+            filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",
+                     ".JPEG"),
+        )
+        for img_path in tqdm(imgs_path,
+                desc="数据集更新进度:",
+                dynamic_ncols=True,
+                colour="green",
+        ):
+            if img_path in dataset:
+                sample=dataset[img_path]
+                xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
+                if not os.path.exists(xml_path):
+                    sample.clear_field("ground_truth")
+                    continue
+                xml_md5 = md5sum(xml_path)
+                if sample.has_field("xml_md5"):
+                    if sample.get_field("xml_md5") != xml_md5:
+                        img_meta, label_info, anno_dict = parse_sample_info(
+                            sample.filepath)
+                        sample.update_fields(anno_dict)
+                        sample.update_fields({
+                            "metadata": img_meta,
+                            "ground_truth": label_info,
+                            "xml_md5": xml_md5
+                        })
+                    sample.save()
+            else:
+                dataset.add_sample(generate_sgcc_sample(img_path))
+        dataset.save()
+    else:
+        for sample in tqdm(
+                dataset,
+                total=len(dataset),
+                desc="数据集更新进度:",
+                dynamic_ncols=True,
+                colour="green",
+        ):
+            xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
+            if not os.path.exists(xml_path):
+                sample.clear_field("ground_truth")
+                continue
+            xml_md5 = md5sum(xml_path)
+            if sample.has_field("xml_md5"):
+                if sample.get_field("xml_md5") != xml_md5:
+                    img_meta, label_info, anno_dict = parse_sample_info(
+                        sample.filepath)
+                    sample.update_fields(anno_dict)
+                    sample.update_fields({
+                        "metadata": img_meta,
+                        "ground_truth": label_info,
+                        "xml_md5": xml_md5
+                    })
+            sample.save()
+        dataset.save()
+    session = WEAK_CACHE.get("session", None)
+    if session is not None:
+        session.refresh()

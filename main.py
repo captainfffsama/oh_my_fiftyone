@@ -16,6 +16,7 @@ from prompt_toolkit import print_formatted_text, HTML
 
 from core.utils import timeblock
 import core.tools as T
+from core.cache import WEAK_CACHE
 
 
 def launch_dataset(dataset):
@@ -23,6 +24,8 @@ def launch_dataset(dataset):
                             address="0.0.0.0",
                             remote=True,
                             auto=True)
+    WEAK_CACHE["dataset"]=dataset
+    WEAK_CACHE["session"]=session
     embed()
     session.close()
 
