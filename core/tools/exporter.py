@@ -225,3 +225,15 @@ def update_dataset(dataset: Optional[focd.Dataset] = None):
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
+def get_select_dv() -> Optional[fo.DatasetView]:
+    """返回被选中的数据的视图
+
+    Returns:
+        Optional[fo.DatasetView]: 返回被选中的数据的视图
+    """
+    dataset = WEAK_CACHE.get("dataset",None)
+    session = WEAK_CACHE.get("session",None)
+    if dataset and session:
+        return dataset.select(session.selected)
+    return None
