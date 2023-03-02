@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-02 13:35:20
+@LastEditTime: 2023-03-02 15:20:04
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -159,7 +159,7 @@ def parse_sample_info(
     anno_dict["img_quality"] = int(anno.get("img_quality", 0))
     anno_dict["additions"] = anno.get("additions", None)
     anno_dict["tags"] = anno.get("sample_tags", [])
-    anno_dict["cheibot_smaple_tags"]=anno.get("chiebot_sample_tags",[])
+    anno_dict["chiebot_sample_tags"]=anno.get("chiebot_sample_tags",[])
 
     return img_meta, label_info, anno_dict
 

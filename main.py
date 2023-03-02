@@ -1,10 +1,11 @@
 from functools import partial
 import time
+import weakref
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 from IPython import embed
-from core.dataset_generator import generate_dataset
+from core.dataset_generator import generate_dataset, import_new_sample2exist_dataset
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
@@ -24,8 +25,8 @@ def launch_dataset(dataset):
                             address="0.0.0.0",
                             remote=True,
                             auto=True)
-    WEAK_CACHE["dataset"]=dataset
-    WEAK_CACHE["session"]=session
+    WEAK_CACHE["session"] = session
+    dataset= lambda session=session:session.dataset
     embed()
     session.close()
 
@@ -49,13 +50,23 @@ def add_data2exsist_dataset():
                                    validator=valida,
                                    completer=WordCompleter(exist_dataset),
                                    complete_in_thread=True)
-        with timeblock():
-            new_dataset = generate_dataset(text, persistent=False)
 
+        valida1 = Validator.from_callable(lambda x: x in ("y","n"),
+                                         error_message="瞎选什么啊")
+        t2 = prompt_session.prompt('要不要把新数据原始数据考到已有数据文件夹? [y/n]:',
+                                   validator=valida1,
+                                   completer=WordCompleter(["y","n"]))
         dataset = fo.load_dataset(t1)
-        dataset.merge_samples(new_dataset)
-        dataset.save()
-        print("dataset merge done")
+        if t2 == "N":
+            with timeblock():
+                new_dataset = generate_dataset(text, persistent=False)
+
+            dataset.merge_samples(new_dataset)
+            dataset.save()
+            print("dataset merge done")
+        else:
+            import_new_sample2exist_dataset(dataset,text)
+            print("新数据导入完毕")
         launch_dataset(dataset)
     else:
         print_formatted_text(
