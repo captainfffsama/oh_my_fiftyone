@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 @Author: captainfffsama
 @Date: 2023-02-28 16:52:46
-@LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-01 14:37:06
+@LastEditors: captainsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-02 10:00:03
 @FilePath: /dataset_manager/core/tools/exporter.py
 @Description:
-'''
+"""
 import os
 import json
 from concurrent import futures
@@ -26,16 +26,19 @@ def _export_one_sample_anno(sample, save_dir):
         "img_quality": "img_quality",
         "additions": "additions",
         "tags": "sample_tags",
-        "chiebot_ID": "ID"
+        "chiebot_ID": "ID",
     }
 
-    for k,v in need_export_map.items():
+    for k, v in need_export_map.items():
         vv = get_sample_field(sample, k)
         if vv:
             result[v] = vv
 
-    result["img_shape"] = (sample["metadata"].height, sample["metadata"].width,
-                           sample["metadata"].num_channels)
+    result["img_shape"] = (
+        sample["metadata"].height,
+        sample["metadata"].width,
+        sample["metadata"].num_channels,
+    )
     result["objs_info"] = []
     dets = get_sample_field(sample, "ground_truth")
     if dets:
@@ -48,15 +51,17 @@ def _export_one_sample_anno(sample, save_dir):
             obj["mask"] = []
             obj["confidence"] = -1
             obj["quality"] = 10
-            obj["bbox"] = (det.bounding_box[0], det.bounding_box[1],
-                           det.bounding_box[0] + det.bounding_box[2],
-                           det.bounding_box[1] + det.bounding_box[3])
+            obj["bbox"] = (
+                det.bounding_box[0],
+                det.bounding_box[1],
+                det.bounding_box[0] + det.bounding_box[2],
+                det.bounding_box[1] + det.bounding_box[3],
+            )
 
             result["objs_info"].append(obj)
 
-    save_path = os.path.join(save_dir,
-                             os.path.splitext(sample.filename)[0] + ".anno")
-    with open(save_path, 'w') as fw:
+    save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
+    with open(save_path, "w") as fw:
         json.dump(result, fw, indent=4, sort_keys=True)
 
 
@@ -69,12 +74,17 @@ def export_anno_file(dataset: focd.Dataset, save_dir: str):
     """
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    with futures.ThreadPoolExecutor(16) as exec:
+    with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir)
-            for sample in dataset
+            exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
         ]
-        for task in tqdm(futures.as_completed(tasks), total=len(dataset)):
+        for task in tqdm(
+            futures.as_completed(tasks),
+            total=len(dataset),
+            desc="anno导出进度:",
+            dynamic_ncols=True,
+            colour="green",
+        ):
             result = task.result()
 
 
@@ -94,10 +104,7 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
         _export_one_sample_anno(sample, save_dir)
 
 
-def export_sample(dataset: focd.Dataset,
-                  save_dir: str,
-                  get_anno=True,
-                  **kwargs):
+def export_sample(dataset: focd.Dataset, save_dir: str, get_anno=True, **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
     Args:
@@ -113,12 +120,16 @@ def export_sample(dataset: focd.Dataset,
     exporter = SGCCGameDatasetExporter(export_dir=save_dir, **kwargs)
     with exporter:
         exporter.log_collection(dataset)
-        with futures.ThreadPoolExecutor(16) as exec:
+        with futures.ThreadPoolExecutor(48) as exec:
             tasks = [
-                exec.submit(_export_one_sample, sample, exporter, get_anno,
-                            save_dir) for sample in dataset
+                exec.submit(_export_one_sample, sample, exporter, get_anno, save_dir)
+                for sample in dataset
             ]
-            for task in tqdm(futures.as_completed(tasks),
-                             total=len(dataset),
-                             desc="样本导出进度:"):
+            for task in tqdm(
+                futures.as_completed(tasks),
+                total=len(dataset),
+                desc="样本导出进度:",
+                dynamic_ncols=True,
+                colour="green",
+            ):
                 result = task.result()

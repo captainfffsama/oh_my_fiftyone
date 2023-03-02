@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
-@LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-01 15:48:01
+@LastEditors: captainsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-02 10:04:49
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -73,7 +73,6 @@ class SGCCGameDatasetImporter(foud.LabeledImageDatasetImporter):
             logging.warning("{} do not have xml!".format(current_img_path))
             return current_img_path, img_meta, None
 
-        img_meta["xml_path"] = current_xml_path
         _, objs_info = parse_xml_info(current_xml_path)
         label_info, wrong_obj_flag = objs_infomap2foDetections(
             objs_info, img_meta)
@@ -131,7 +130,6 @@ def objs_infomap2foDetections(
                                   bounding_box=bbox,
                                   ori_data_prob=False))
     return fol.Detections(detections=result), no_wrong_obj
-
 
 def generate_sgcc_sample(img_path,
                          extra_attr: Optional[dict] = None
