@@ -160,6 +160,17 @@ def export_sample(save_dir: str,
 
 
 def update_dataset(dataset: Optional[focd.Dataset] = None):
+    """更新数据集
+
+    Args:
+        dataset (Optional[focd.Dataset], optional):
+            若dataset参数为None,那么将使用缓存引用中的dataset,这个dataset通常是全局的dataset
+            此时更新,将先遍历数据集所在文件夹,然后按照文件夹中的文件来进行更新.
+            重新标注了的文件将刷新数据集中对应项,新的数据将被直接添加到数据集中.
+
+            若dataset不是None,那么将遍历传入的数据集视图,然后尝试更新其中对应项.该情况下,新的数据
+            将不会被添加到数据集中.
+    """
     if dataset is None:
         dataset = WEAK_CACHE.get("dataset", None)
         if dataset is None:
