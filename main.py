@@ -1,6 +1,8 @@
 from functools import partial
+from typing import Callable,Optional,Protocol
 import time
-import weakref
+import pid
+from pid.decorator import pidfile
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
@@ -19,14 +21,18 @@ from core.utils import timeblock
 import core.tools as T
 from core.cache import WEAK_CACHE
 
+class DatasetClass(Protocol):
+    def __call__(self,s:fo.Session) -> focd.Dataset:
+        pass
 
-def launch_dataset(dataset):
-    session = fo.launch_app(dataset=dataset,
+
+def launch_dataset(_d11:focd.Dataset):
+    session = fo.launch_app(dataset=_d11,
                             address="0.0.0.0",
                             remote=True,
                             auto=True)
     WEAK_CACHE["session"] = session
-    dataset= lambda session=session:session.dataset
+    dataset: DatasetClass = lambda session=session:session.dataset
     embed()
     session.close()
 
@@ -145,7 +151,7 @@ def delete_exsist_dataset():
                                   '''))
         time.sleep(1)
 
-
+@pidfile(pidname='dataset_manager')
 def main():
     prompt_session = PromptSession()
     function_map = {
