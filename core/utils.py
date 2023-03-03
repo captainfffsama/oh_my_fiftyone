@@ -77,10 +77,10 @@ def parse_xml_info(xml_path):
     obj_info = {}
     for obj in root.findall('object'):
         obj_name = obj.find('name').text
-        xmin = int(obj.find('bndbox/xmin').text)
-        ymin = int(obj.find('bndbox/ymin').text)
-        xmax = int(obj.find('bndbox/xmax').text)
-        ymax = int(obj.find('bndbox/ymax').text)
+        xmin = int(float(obj.find('bndbox/xmin').text))
+        ymin = int(float(obj.find('bndbox/ymin').text))
+        xmax = int(float(obj.find('bndbox/xmax').text))
+        ymax = int(float(obj.find('bndbox/ymax').text))
 
         if obj_name not in obj_info.keys():
             obj_info[obj_name] = []

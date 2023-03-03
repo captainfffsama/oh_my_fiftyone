@@ -2,8 +2,8 @@
 '''
 @Author: captainsama
 @Date: 2023-02-27 16:20:02
-@LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-02 14:47:29
+@LastEditors: captainsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-03 15:02:45
 @FilePath: /dataset_manager/core/exporter/sgccgame_dataset_exporter.py
 @Description:
 '''
@@ -92,15 +92,15 @@ class SGCCGameDatasetExporter(fouvoc.VOCDetectionDatasetExporter):
         export_dir=None,
         data_path=None,
         labels_path=None,
-        export_media=None,
+        export_media=True,
         rel_dir=None,
         include_paths=True,
         image_format=None,
         extra_attrs=False,
     ):
         if data_path is None and labels_path is None:
-            data_path=export_dir
-            labels_path=export_dir
+            data_path=os.path.abspath(export_dir)
+            labels_path=os.path.abspath(export_dir)
         super().__init__(
             export_dir,
             data_path,
