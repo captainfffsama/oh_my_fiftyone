@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-02 15:20:04
+@LastEditTime: 2023-03-03 12:46:25
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -146,7 +146,7 @@ def parse_sample_info(
         logging.debug("{} do not have anno!".format(img_path))
         anno_dict["chiebot_ID"] = "game_" + md5sum(
             img_path) if not os.path.basename(img_path).startswith(
-                "game_") else os.path.basename(img_path)
+                "game_") else os.path.splitext(os.path.basename(img_path))[0]
         return img_meta, label_info, anno_dict
 
     with open(anno_path, 'r') as fr:
