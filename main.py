@@ -1,16 +1,15 @@
 from functools import partial
-from typing import Callable,Optional,Protocol
+from typing import Callable, Optional, Protocol
 import time
-import pid
+
 from pid.decorator import pidfile
+from IPython import embed
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
-from IPython import embed
-from core.dataset_generator import generate_dataset, import_new_sample2exist_dataset
+from fiftyone import ViewField as F
+
 from prompt_toolkit import PromptSession, prompt
-from prompt_toolkit.history import InMemoryHistory
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit import print_formatted_text as print
 from prompt_toolkit.shortcuts import yes_no_dialog
@@ -20,19 +19,23 @@ from prompt_toolkit import print_formatted_text, HTML
 from core.utils import timeblock
 import core.tools as T
 from core.cache import WEAK_CACHE
+from core.data_preprocess import preprocess
+from core.dataset_generator import generate_dataset, import_new_sample2exist_dataset
+
 
 class DatasetClass(Protocol):
-    def __call__(self,s:fo.Session) -> focd.Dataset:
+
+    def __call__(self, s: fo.Session) -> focd.Dataset:
         pass
 
 
-def launch_dataset(_d11:focd.Dataset):
+def launch_dataset(_d11: focd.Dataset):
     session = fo.launch_app(dataset=_d11,
                             address="0.0.0.0",
                             remote=True,
                             auto=True)
     WEAK_CACHE["session"] = session
-    dataset: DatasetClass = lambda session=session:session.dataset
+    dataset: DatasetClass = lambda session=session: session.dataset
     embed()
     session.close()
 
@@ -57,13 +60,13 @@ def add_data2exsist_dataset():
                                    completer=WordCompleter(exist_dataset),
                                    complete_in_thread=True)
 
-        valida1 = Validator.from_callable(lambda x: x in ("y","n"),
-                                         error_message="瞎选什么啊")
+        valida1 = Validator.from_callable(lambda x: x in ("y", "n"),
+                                          error_message="瞎选什么啊")
         t2 = prompt_session.prompt('要不要把新数据原始数据考到已有数据文件夹? [y/n]:',
                                    validator=valida1,
-                                   completer=WordCompleter(["y","n"]))
+                                   completer=WordCompleter(["y", "n"]))
         dataset = fo.load_dataset(t1)
-        if t2 == "N":
+        if t2 == "n":
             with timeblock():
                 new_dataset = generate_dataset(text, persistent=False)
 
@@ -71,7 +74,7 @@ def add_data2exsist_dataset():
             dataset.save()
             print("dataset merge done")
         else:
-            import_new_sample2exist_dataset(dataset,text)
+            import_new_sample2exist_dataset(dataset, text)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:
@@ -151,6 +154,43 @@ def delete_exsist_dataset():
                                   '''))
         time.sleep(1)
 
+
+def preprocess_data():
+    prompt_session = PromptSession()
+    dataset_dir = prompt_session.prompt('请输入样本路径:',
+                                        completer=PathCompleter(),
+                                        complete_in_thread=True,
+                                        validator=None)
+
+    save_dir = prompt_session.prompt('请输入保存路径:',
+                                     completer=PathCompleter(),
+                                     complete_in_thread=True,
+                                     validator=None)
+
+    valida1 = Validator.from_callable(lambda x: x in ("y", "n"),
+                                      error_message="瞎选什么啊")
+    t2 = prompt_session.prompt('是否进行md5重命名? [y/n]:',
+                               validator=valida1,
+                               completer=WordCompleter(["y", "n"]))
+
+    rename = False
+    prefix = ""
+
+    if t2 == "y":
+        rename = True
+        t3 = prompt_session.prompt('请输入重命名前缀:', )
+        prefix = t3
+
+    convert2jpg = False
+    if t4 == "y":
+        t4 = prompt_session.prompt('是否全部转换为jpg? [y/n]:',
+                                   validator=valida1,
+                                   completer=WordCompleter(["y", "n"]))
+        convert2jpg = True
+
+    preprocess(dataset_dir, save_dir, rename, convert2jpg, prefix)
+
+
 @pidfile(pidname='dataset_manager')
 def main():
     prompt_session = PromptSession()
@@ -159,6 +199,7 @@ def main():
         "2": check_exsist_dataset,
         "3": init_new_dataset,
         "4": delete_exsist_dataset,
+        "5": preprocess_data,
     }
     while True:
         main_vali = Validator.from_callable(partial(number_in_ranger,
