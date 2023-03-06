@@ -348,3 +348,38 @@ def add_dataset_fields_by_txt(
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
+def clean_dataset(
+    dataset: Optional[focd.Dataset] = None,
+):
+    """清除数据库中实际文件已经不存在的样本
+
+    Args:
+        dataset (Optional[focd.Dataset], optional): 和其他函数一样,默认是全局数据集. Defaults to None.
+    """
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+
+    need_del=[]
+
+    for sample in tqdm(
+        dataset,
+        total=len(dataset),
+        desc="数据集检查进度:",
+        dynamic_ncols=True,
+        colour="green",):
+        if not os.path.exists(sample["filepath"]):
+            need_del.append(sample["id"])
+
+    dataset.delete_samples(need_del)
+    dataset.save()
+
+
+    session = WEAK_CACHE.get("session", None)
+    if session is not None:
+        session.refresh()
