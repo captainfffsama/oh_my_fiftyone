@@ -1,3 +1,4 @@
+import os
 from functools import partial
 from typing import Callable, Optional, Protocol
 import time
@@ -51,6 +52,7 @@ def add_data2exsist_dataset():
                                  complete_in_thread=True,
                                  validator=None)
     exist_dataset = fo.list_datasets()
+    text=os.path.abspath(text)
 
     if exist_dataset:
         valida = Validator.from_callable(lambda x: x in exist_dataset,
@@ -113,6 +115,7 @@ def init_new_dataset():
                                  validator=None)
     t1 = prompt_session.prompt('请输入新导入的数据集名称:', validator=None)
     # text= "/home/chiebotgpuhq/tmp_space/fif_test_data"
+    text=os.path.abspath(text)
     if t1 in fo.list_datasets():
         t2 = yes_no_dialog(
             title="老实交代覆不覆盖数据库",
@@ -162,10 +165,14 @@ def preprocess_data():
                                         complete_in_thread=True,
                                         validator=None)
 
+    dataset_dir=os.path.abspath(dataset_dir)
+
     save_dir = prompt_session.prompt('请输入保存路径:',
                                      completer=PathCompleter(),
                                      complete_in_thread=True,
                                      validator=None)
+
+    save_dir=os.path.abspath(save_dir)
 
     valida1 = Validator.from_callable(lambda x: x in ("y", "n"),
                                       error_message="瞎选什么啊")
@@ -178,14 +185,14 @@ def preprocess_data():
 
     if t2 == "y":
         rename = True
-        t3 = prompt_session.prompt('请输入重命名前缀:', )
+        t3 = prompt('请输入重命名前缀:',validator=None)
         prefix = t3
 
     convert2jpg = False
+    t4 = prompt_session.prompt('是否全部转换为jpg? [y/n]:',
+                                validator=valida1,
+                                completer=WordCompleter(["y", "n"]))
     if t4 == "y":
-        t4 = prompt_session.prompt('是否全部转换为jpg? [y/n]:',
-                                   validator=valida1,
-                                   completer=WordCompleter(["y", "n"]))
         convert2jpg = True
 
     preprocess(dataset_dir, save_dir, rename, convert2jpg, prefix)

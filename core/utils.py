@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 import fiftyone.core.metadata as fom
 from PIL import Image
 import numpy as np
+from core.logging import logging
 
 
 def get_all_file_path(file_dir: str, filter_=
@@ -68,23 +69,29 @@ def parse_xml_info(xml_path):
 
     tree = ET.parse(xml_path)
     root = tree.getroot()
-    img_name = root.find('filename').text
-    img_width = int(root.find('size/width').text)
-    img_height = int(root.find('size/height').text)
-    img_depth = int(root.find('size/depth').text)
-    img_info = [img_name, img_width, img_height, img_depth]
+    try:
+        img_name = root.find('filename').text
+        img_width = int(root.find('size/width').text)
+        img_height = int(root.find('size/height').text)
+        img_depth = int(root.find('size/depth').text)
+        img_info = [img_name, img_width, img_height, img_depth]
 
-    obj_info = {}
-    for obj in root.findall('object'):
-        obj_name = obj.find('name').text
-        xmin = int(float(obj.find('bndbox/xmin').text))
-        ymin = int(float(obj.find('bndbox/ymin').text))
-        xmax = int(float(obj.find('bndbox/xmax').text))
-        ymax = int(float(obj.find('bndbox/ymax').text))
+        obj_info = {}
+        for obj in root.findall('object'):
+            obj_name = obj.find('name').text
+            xmin = int(float(obj.find('bndbox/xmin').text))
+            ymin = int(float(obj.find('bndbox/ymin').text))
+            xmax = int(float(obj.find('bndbox/xmax').text))
+            ymax = int(float(obj.find('bndbox/ymax').text))
 
-        if obj_name not in obj_info.keys():
-            obj_info[obj_name] = []
-        obj_info[obj_name].append((xmin, ymin, xmax, ymax))
+            if obj_name not in obj_info.keys():
+                obj_info[obj_name] = []
+            obj_info[obj_name].append((xmin, ymin, xmax, ymax))
+    except AttributeError as e:
+        logging.critical("{} xml is wrong".format(xml_path))
+        print("{} is wrong".format(xml_path))
+        raise e
+
 
     return img_info, obj_info
 
