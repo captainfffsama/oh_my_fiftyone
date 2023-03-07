@@ -8,6 +8,7 @@
 @Description:
 """
 from typing import Optional, Union, List
+from pprint import pprint
 
 import os
 import json
@@ -40,9 +41,9 @@ def _export_one_sample_anno(sample, save_dir):
         if vv:
             result[v] = vv
 
-    result["chiebot_sample_tags"] = get_sample_field(
-        sample, "chiebot_sample_tags", default=[]
-    )
+    result["chiebot_sample_tags"] = get_sample_field(sample,
+                                                     "chiebot_sample_tags",
+                                                     default=[])
 
     result["img_shape"] = (
         sample["metadata"].height,
@@ -70,7 +71,8 @@ def _export_one_sample_anno(sample, save_dir):
 
             result["objs_info"].append(obj)
 
-    save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
+    save_path = os.path.join(save_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno")
     with open(save_path, "w") as fw:
         json.dump(result, fw, indent=4, sort_keys=True)
 
@@ -98,14 +100,15 @@ def export_anno_file(
         os.mkdir(save_dir)
     with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
+            exec.submit(_export_one_sample_anno, sample, save_dir)
+            for sample in dataset
         ]
         for task in tqdm(
-            futures.as_completed(tasks),
-            total=len(dataset),
-            desc="anno导出进度:",
-            dynamic_ncols=True,
-            colour="green",
+                futures.as_completed(tasks),
+                total=len(dataset),
+                desc="anno导出进度:",
+                dynamic_ncols=True,
+                colour="green",
         ):
             save_path = task.result()
 
@@ -128,9 +131,10 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
         _export_one_sample_anno(sample, save_dir)
 
 
-def export_sample(
-    save_dir: str, dataset: Optional[focd.Dataset] = None, get_anno=True, **kwargs
-):
+def export_sample(save_dir: str,
+                  dataset: Optional[focd.Dataset] = None,
+                  get_anno=True,
+                  **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
     Args:
@@ -155,15 +159,15 @@ def export_sample(
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(48) as exec:
             tasks = [
-                exec.submit(_export_one_sample, sample, exporter, get_anno, save_dir)
-                for sample in dataset
+                exec.submit(_export_one_sample, sample, exporter, get_anno,
+                            save_dir) for sample in dataset
             ]
             for task in tqdm(
-                futures.as_completed(tasks),
-                total=len(dataset),
-                desc="样本导出进度:",
-                dynamic_ncols=True,
-                colour="green",
+                    futures.as_completed(tasks),
+                    total=len(dataset),
+                    desc="样本导出进度:",
+                    dynamic_ncols=True,
+                    colour="green",
             ):
                 result = task.result()
     print("样本导出完毕")
@@ -204,8 +208,8 @@ def update_dataset(
             imgs_path = sample_path_list
         else:
             dataset_dir = dataset.info.get(
-                "dataset_dir", os.path.split(dataset.first().filepath)[0]
-            )
+                "dataset_dir",
+                os.path.split(dataset.first().filepath)[0])
             imgs_path = get_all_file_path(
                 dataset_dir,
                 filter_=(
@@ -221,10 +225,10 @@ def update_dataset(
             )
         with dataset.save_context() as context:
             for img_path in tqdm(
-                imgs_path,
-                desc="数据集更新进度:",
-                dynamic_ncols=True,
-                colour="green",
+                    imgs_path,
+                    desc="数据集更新进度:",
+                    dynamic_ncols=True,
+                    colour="green",
             ):
                 if img_path in dataset:
                     sample = dataset[img_path]
@@ -236,24 +240,21 @@ def update_dataset(
                     if sample.has_field("xml_md5"):
                         if sample.get_field("xml_md5") != xml_md5:
                             img_meta, label_info, anno_dict = parse_sample_info(
-                                sample.filepath
-                            )
+                                sample.filepath)
                             sample.update_fields(anno_dict)
-                            sample.update_fields(
-                                {
-                                    "metadata": img_meta,
-                                    "ground_truth": label_info,
-                                    "xml_md5": xml_md5,
-                                }
-                            )
+                            sample.update_fields({
+                                "metadata": img_meta,
+                                "ground_truth": label_info,
+                                "xml_md5": xml_md5,
+                            })
                         context.save(sample)
                 else:
                     dataset.add_sample(generate_sgcc_sample(img_path))
         dataset.save()
     else:
-        for sample in dataset.iter_samples(
-            progress=True, autosave=True, batch_size=0.2
-        ):
+        for sample in dataset.iter_samples(progress=True,
+                                           autosave=True,
+                                           batch_size=0.2):
             xml_path = os.path.splitext(sample.filepath)[0] + ".xml"
             if not os.path.exists(xml_path):
                 sample.clear_field("ground_truth")
@@ -261,15 +262,14 @@ def update_dataset(
             xml_md5 = md5sum(xml_path)
             if sample.has_field("xml_md5"):
                 if sample.get_field("xml_md5") != xml_md5:
-                    img_meta, label_info, anno_dict = parse_sample_info(sample.filepath)
+                    img_meta, label_info, anno_dict = parse_sample_info(
+                        sample.filepath)
                     sample.update_fields(anno_dict)
-                    sample.update_fields(
-                        {
-                            "metadata": img_meta,
-                            "ground_truth": label_info,
-                            "xml_md5": xml_md5,
-                        }
-                    )
+                    sample.update_fields({
+                        "metadata": img_meta,
+                        "ground_truth": label_info,
+                        "xml_md5": xml_md5,
+                    })
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
@@ -323,7 +323,8 @@ def add_dataset_fields_by_txt(
     if isinstance(txt_path, str):
         imgs_path = get_all_file_path(
             txt_path,
-            filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
+            filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",
+                     ".JPEG"),
         )
     else:
         imgs_path = txt_path
@@ -333,23 +334,22 @@ def add_dataset_fields_by_txt(
             fields_dict = json.load(fr)
 
     for sample in tqdm(
-        dataset.select_by("filepath", imgs_path).iter_samples(autosave=True),
-        total=len(imgs_path),
-        desc="字段更新进度:",
-        dynamic_ncols=True,
-        colour="green",
+            dataset.select_by("filepath",
+                              imgs_path).iter_samples(autosave=True),
+            total=len(imgs_path),
+            desc="字段更新进度:",
+            dynamic_ncols=True,
+            colour="green",
     ):
         for k, v in fields_dict.items():
-            sample.set_field(k,v)
+            sample.set_field(k, v)
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
 
 
-def clean_dataset(
-    dataset: Optional[focd.Dataset] = None,
-):
+def clean_dataset(dataset: Optional[focd.Dataset] = None, ):
     """清除数据库中实际文件已经不存在的样本
 
     Args:
@@ -366,11 +366,11 @@ def clean_dataset(
     need_del = []
 
     for sample in tqdm(
-        dataset,
-        total=len(dataset),
-        desc="数据集检查进度:",
-        dynamic_ncols=True,
-        colour="green",
+            dataset,
+            total=len(dataset),
+            desc="数据集检查进度:",
+            dynamic_ncols=True,
+            colour="green",
     ):
         if not os.path.exists(sample["filepath"]):
             need_del.append(sample["id"])
@@ -381,3 +381,30 @@ def clean_dataset(
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
+
+def dataset_value2txt(value: str = "filepath",
+                          save_txt: Optional[str] = None,
+                          dataset: Optional[focd.Dataset] = None):
+    """将数据集的特定字段导入到txt
+
+    Args:
+        value (str, optional): 需要导出的字段. Defaults to "filepath".
+        save_txt (Optional[str], optional): 需要保存的txt的路径,若为None就仅print出. Defaults to None.
+        dataset (Optional[focd.Dataset], optional): 需要导出字段的数据集,若为None就是 ``session.dataset``. Defaults to None.
+    """
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+
+    v = dataset.values(value)
+    if save_txt:
+        with open(save_txt, "w") as fw:
+            for vv in v:
+                fw.write(str(vv) + "\n")
+    else:
+        pprint(v)
