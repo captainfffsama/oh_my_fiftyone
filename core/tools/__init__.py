@@ -14,4 +14,4 @@
     - clean_dataset: 删除数据库中实际文件不存在的记录
     - dataset_value2txt: 将数据集的特定字段导入到txt
 '''
-from .exporter import export_anno_file, export_sample, update_dataset, get_select_dv, add_dataset_fields_by_txt, clean_dataset, dataset_value3txt
+from .exporter import export_anno_file, export_sample, update_dataset, get_select_dv, add_dataset_fields_by_txt, clean_dataset, dataset_value2txt
