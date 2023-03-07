@@ -332,17 +332,15 @@ def add_dataset_fields_by_txt(
         with open(fields_dict, "r") as fr:
             fields_dict = json.load(fr)
 
-    with dataset.save_context() as context:
-        for sample in tqdm(
-            dataset.select_by("filepath", imgs_path),
-            total=len(imgs_path),
-            desc="字段更新进度:",
-            dynamic_ncols=True,
-            colour="green",
-        ):
-            for k, v in fields_dict.items():
-                sample.set_field(k,v)
-            context.save(sample)
+    for sample in tqdm(
+        dataset.select_by("filepath", imgs_path).iter_samples(autosave=True),
+        total=len(imgs_path),
+        desc="字段更新进度:",
+        dynamic_ncols=True,
+        colour="green",
+    ):
+        for k, v in fields_dict.items():
+            sample.set_field(k,v)
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:
