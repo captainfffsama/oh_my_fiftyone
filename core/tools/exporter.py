@@ -98,15 +98,14 @@ def export_anno_file(
         os.mkdir(save_dir)
     with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir)
-            for sample in dataset
+            exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
         ]
         for task in tqdm(
-                futures.as_completed(tasks),
-                total=len(dataset),
-                desc="anno导出进度:",
-                dynamic_ncols=True,
-                colour="green",
+            futures.as_completed(tasks),
+            total=len(dataset),
+            desc="anno导出进度:",
+            dynamic_ncols=True,
+            colour="green",
         ):
             save_path = task.result()
 
@@ -342,12 +341,13 @@ def add_dataset_fields_by_txt(
             colour="green",
         ):
             for k, v in fields_dict.items():
-                sample[k] = v
+                sample.set_field(k,v)
             context.save(sample)
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
 
 def clean_dataset(
     dataset: Optional[focd.Dataset] = None,
@@ -365,20 +365,20 @@ def clean_dataset(
         else:
             dataset = s.dataset
 
-    need_del=[]
+    need_del = []
 
     for sample in tqdm(
         dataset,
         total=len(dataset),
         desc="数据集检查进度:",
         dynamic_ncols=True,
-        colour="green",):
+        colour="green",
+    ):
         if not os.path.exists(sample["filepath"]):
             need_del.append(sample["id"])
 
     dataset.delete_samples(need_del)
     dataset.save()
-
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:
