@@ -20,6 +20,7 @@ import fiftyone.core.dataset as focd
 from tqdm import tqdm
 from PIL import Image
 import piexif
+import cv2
 
 from core.utils import get_sample_field, md5sum, get_all_file_path
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
@@ -112,6 +113,7 @@ def check_dataset_exif(
     dataset: Optional[focd.Dataset] = None,
     clean_inplace: bool = False,
     log_path: Optional[str] = None,
+    cv2_fix:bool=False,
 ) -> fo.DatasetView:
     """检查数据集中是否包含exif
 
@@ -119,7 +121,7 @@ def check_dataset_exif(
         dataset (Optional[focd.Dataset], optional): _description_. Defaults to None.
         clean_inplace (bool, optional): 是否原地移除exif. Defaults to False.
         log_path (Optional[str], optional): 若不为None,则将包含了exif的样本路径导出到txt. Defaults to None.
-
+        cv2_fix (bool, optinal): 在clean_inplace为True的情况下,若piexif报错,指示是否使用opencv读入读出. Defaults False,
     Returns:
         fo.DatasetView: 包含了exif的数据的dataview
     """
@@ -142,7 +144,14 @@ def check_dataset_exif(
         if "exif" in img.info:
             have_exif.append(sample["filepath"])
             if clean_inplace:
-                piexif.remove(sample["filepath"])
+                try:
+                    piexif.remove(sample["filepath"])
+                except Exception as e:
+                    logging.critical("{} remove piexif faild".format(sample["filepath"]))
+                    print("{} remove piexif faild".format(sample["filepath"]))
+                    if cv2_fix and isinstance(e, piexif.InvalidImageDataError):
+                        img=cv2.imread(sample.filepath,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
+                        cv2.imwrite(sample.filepath,img)
 
     if log_path:
         with open(log_path,"w") as fw:
