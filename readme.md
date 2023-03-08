@@ -7,6 +7,7 @@
 - ipython
 - loguru
 - pid
+- piexif
 
 # TODO
 - [x] 记录额外信息

@@ -11,6 +11,7 @@ import os
 import json
 from concurrent import futures
 import shutil
+from datetime import datetime
 
 
 from prompt_toolkit.shortcuts import ProgressBar
@@ -20,7 +21,7 @@ import fiftyone as fo
 from core.importer import SGCCGameDatasetImporter, generate_sgcc_sample
 from core.utils import get_all_file_path, timeblock
 from core.logging import logging, logging_path
-from core.tools import update_dataset,add_dataset_fields_by_txt
+from core.tools import update_dataset,add_dataset_fields_by_txt,imgslist2dataview
 
 SAMPLE_MAX_CACHE = 60000
 
@@ -139,4 +140,6 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
 
     if extra_attr:
         add_dataset_fields_by_txt(new_imgs_path,extra_attr,exist_dataset)
+
+    imgslist2dataview(new_imgs_path,exist_dataset).tag_samples(str(datetime.now()))
 

@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-03-03 15:40:01
 @LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-06 12:47:56
+@LastEditTime: 2023-03-08 14:58:33
 @FilePath: /dataset_manager/core/data_preprocess.py
 @Description:
 '''
@@ -12,6 +12,7 @@ import shutil
 from concurrent import futures
 
 import cv2
+import piexif
 from tqdm import tqdm
 from core.utils import md5sum,get_all_file_path
 
@@ -33,6 +34,7 @@ def preprocess_one(img_path,save_dir,rename=True,convert2jpg=True,rename_prefix=
         img=cv2.imread(img_path,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
         if img_ext in (".jpg",".jpeg",".JPG",".JPEG") and len(img.shape)==3 and img.shape[-1]==3:
             shutil.copy(img_path,os.path.join(save_dir,new_name+".jpg"))
+            piexif.remove(os.path.join(save_dir,new_name+".jpg"))
         else:
             cv2.imwrite(os.path.join(save_dir,new_name+".jpg"),img)
     else:

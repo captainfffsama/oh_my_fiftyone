@@ -2,6 +2,7 @@ import os
 from functools import partial
 from typing import Callable, Optional, Protocol
 import time
+from datetime import datetime
 
 from pid.decorator import pidfile
 from IPython import embed
@@ -71,6 +72,7 @@ def add_data2exsist_dataset():
         if t2 == "n":
             with timeblock():
                 new_dataset = generate_dataset(text, persistent=False)
+                new_dataset.tag_samples(str(datetime.now()))
 
             dataset.merge_samples(new_dataset)
             dataset.save()
