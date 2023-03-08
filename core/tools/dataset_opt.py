@@ -26,7 +26,7 @@ from core.logging import logging
 
 from core.cache import WEAK_CACHE
 from core.importer import parse_sample_info, generate_sgcc_sample
-from core.tools import imgslist2dataview
+from .common_tools import imgslist2dataview
 
 
 def update_dataset(
