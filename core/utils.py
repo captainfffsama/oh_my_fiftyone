@@ -11,16 +11,25 @@ import numpy as np
 from core.logging import logging
 
 
-def get_all_file_path(file_dir: str, filter_=
-                      (".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg",".JPEG")) -> list:
-    #遍历文件夹下所有的file
+def get_all_file_path(
+    file_dir: str,
+    filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
+) -> list:
+    # 遍历文件夹下所有的file
     if os.path.isdir(file_dir):
-        return [os.path.join(maindir,filename) for maindir,_,file_name_list in os.walk(file_dir) \
-            for filename in file_name_list \
-            if os.path.splitext(filename)[1] in filter_ ]
+        return [
+            os.path.join(maindir, filename)
+            for maindir, _, file_name_list in os.walk(file_dir)
+            for filename in file_name_list
+            if os.path.splitext(filename)[1] in filter_
+        ]
     elif os.path.isfile(file_dir):
-        with open(file_dir, 'r') as fr:
-            paths = [os.path.abspath(x.strip()) for x in fr.readlines() if os.path.splitext(x.strip())[1] in filter_]
+        with open(file_dir, "r") as fr:
+            paths = [
+                os.path.abspath(x.strip())
+                for x in fr.readlines()
+                if os.path.splitext(x.strip())[1] in filter_
+            ]
         return paths
     else:
         raise ValueError("{} should be dir or a txt file".format(file_dir))
@@ -55,7 +64,7 @@ PIL_MODE_CHANNEL_MAP = {
 
 
 def parse_xml_info(xml_path):
-    ''' 解析xml文件信息
+    """解析xml文件信息
     解析出的xml信息包含2类：
     第一类是图像信息：图像名图像宽高,通道数
     第二类是包含的目标信息：目标类别和每类目标所有bbx的位置
@@ -64,25 +73,25 @@ def parse_xml_info(xml_path):
     Return
         img_info: [list], [img_name, W, H, C]
         obj_info: [dict], {obj_name1: [[xmin,ymin,xmax,ymax], [xmin,ymin,xmax,ymax], ...], obj_name2: ...}
-    '''
+    """
     assert os.path.exists(xml_path), "{0} does not exist!".format(xml_path)
 
     tree = ET.parse(xml_path)
     root = tree.getroot()
     try:
-        img_name = root.find('filename').text
-        img_width = int(root.find('size/width').text)
-        img_height = int(root.find('size/height').text)
-        img_depth = int(root.find('size/depth').text)
+        img_name = root.find("filename").text
+        img_width = int(root.find("size/width").text)
+        img_height = int(root.find("size/height").text)
+        img_depth = int(root.find("size/depth").text)
         img_info = [img_name, img_width, img_height, img_depth]
 
         obj_info = {}
-        for obj in root.findall('object'):
-            obj_name = obj.find('name').text
-            xmin = int(float(obj.find('bndbox/xmin').text))
-            ymin = int(float(obj.find('bndbox/ymin').text))
-            xmax = int(float(obj.find('bndbox/xmax').text))
-            ymax = int(float(obj.find('bndbox/ymax').text))
+        for obj in root.findall("object"):
+            obj_name = obj.find("name").text
+            xmin = int(float(obj.find("bndbox/xmin").text))
+            ymin = int(float(obj.find("bndbox/ymin").text))
+            xmax = int(float(obj.find("bndbox/xmax").text))
+            ymax = int(float(obj.find("bndbox/ymax").text))
 
             if obj_name not in obj_info.keys():
                 obj_info[obj_name] = []
@@ -92,22 +101,23 @@ def parse_xml_info(xml_path):
         print("{} is wrong".format(xml_path))
         raise e
 
-
     return img_info, obj_info
 
 
 def parse_img_metadata(img_path) -> fom.ImageMetadata:
     img = Image.open(img_path)
-    return fom.ImageMetadata(mime_type=img.format,
-                             width=img.width,
-                             height=img.height,
-                             num_channels=PIL_MODE_CHANNEL_MAP.get(
-                                 img.mode, "3"))
+    return fom.ImageMetadata(
+        size_bytes=os.path.getsize(img_path),
+        mime_type=img.format,
+        width=img.width,
+        height=img.height,
+        num_channels=PIL_MODE_CHANNEL_MAP.get(img.mode, "3"),
+    )
 
 
 def normalization_xyxy(
-        xyxy: tuple, w: int,
-        h: int) -> Tuple[Tuple[float, float, float, float], bool]:
+    xyxy: tuple, w: int, h: int
+) -> Tuple[Tuple[float, float, float, float], bool]:
     """将 xmin,ymin,xmax,ymax 转化成 tlx,tly,w,h,数值归一化到[0,1]
 
     Args:
@@ -144,33 +154,34 @@ def normalization_xyxy(
         ymin = int(np.clip(ymin, 0, h))
         flag = False
 
-    return (xmin/w,ymin/h,(xmax-xmin)/w,(ymax-ymin)/h),flag
+    return (xmin / w, ymin / h, (xmax - xmin) / w, (ymax - ymin) / h), flag
+
 
 @contextmanager
-def timeblock(label:str = '\033[1;34mSpend time:\033[0m'):
-    r'''上下文管理测试代码块运行时间,需要
-        import time
-        from contextlib import contextmanager
-    '''
+def timeblock(label: str = "\033[1;34mSpend time:\033[0m"):
+    r"""上下文管理测试代码块运行时间,需要
+    import time
+    from contextlib import contextmanager
+    """
     start = time.perf_counter()
     try:
         yield
     finally:
         end = time.perf_counter()
-        print('\033[1;34m{} : {}\033[0m'.format(label, end - start))
+        print("\033[1;34m{} : {}\033[0m".format(label, end - start))
 
 
-def md5sum(count_str:str) -> str:
+def md5sum(count_str: str) -> str:
     m = hashlib.md5()
     if os.path.isfile(count_str):
-        with open(count_str,'rb') as frb:
+        with open(count_str, "rb") as frb:
             m.update(frb.read())
     else:
-        m.update(count_str.encode('utf-8'))
+        m.update(count_str.encode("utf-8"))
     return m.hexdigest()
 
 
-def get_sample_field(sample,field,default=None):
+def get_sample_field(sample, field, default=None):
     if sample.has_field(field):
         return sample.get_field(field)
     else:
