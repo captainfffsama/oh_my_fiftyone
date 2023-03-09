@@ -22,6 +22,7 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
+from .common_tools import print_time_deco
 
 
 def _export_one_sample_anno(sample, save_dir):
@@ -76,6 +77,7 @@ def _export_one_sample_anno(sample, save_dir):
     return save_path
 
 
+@print_time_deco
 def export_anno_file(
     save_dir: str,
     dataset: Optional[focd.Dataset] = None,
@@ -127,6 +129,7 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
         _export_one_sample_anno(sample, save_dir)
 
 
+@print_time_deco
 def export_sample(
     save_dir: str, dataset: Optional[focd.Dataset] = None, get_anno=True, **kwargs
 ):
@@ -166,4 +169,3 @@ def export_sample(
             ):
                 result = task.result()
     print("样本导出完毕")
-

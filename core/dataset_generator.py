@@ -141,5 +141,5 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     if extra_attr:
         add_dataset_fields_by_txt(new_imgs_path,extra_attr,exist_dataset)
 
-    imgslist2dataview(new_imgs_path,exist_dataset).tag_samples(str(datetime.now()))
+    imgslist2dataview(new_imgs_path,exist_dataset).tag_samples(str(datetime.now())+"import")
 

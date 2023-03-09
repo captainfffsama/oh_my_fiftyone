@@ -10,6 +10,8 @@
 
 from typing import Optional, Union, List
 from pprint import pprint
+from datetime import datetime
+from functools import wraps
 
 import os
 import json
@@ -28,7 +30,15 @@ from core.logging import logging
 
 from core.cache import WEAK_CACHE
 
+def print_time_deco(func):
+    @wraps(func)
+    def wrapper(*args,**kwargs):
+        result=func(*args,**kwargs)
+        print("操作完成时间: {}".format(datetime.now()))
+        return result
+    return wrapper
 
+@print_time_deco
 def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
     """返回被选中的数据的视图,若有txt就返回txt中的,没有就是浏览器中选中的
     Args:
@@ -54,6 +64,7 @@ def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
     return None
 
 
+@print_time_deco
 def dataset_value2txt(
     value: str = "filepath",
     save_txt: Optional[str] = None,
@@ -83,6 +94,7 @@ def dataset_value2txt(
         pprint(v)
 
 
+@print_time_deco
 def imgslist2dataview(
     imgslist: Union[str, List[str]], dataset: Optional[focd.Dataset] = None
 ) -> fo.DatasetView:
@@ -108,7 +120,7 @@ def imgslist2dataview(
 
     return dataset.select_by("filepath", imgslist)
 
-
+@print_time_deco
 def check_dataset_exif(
     dataset: Optional[focd.Dataset] = None,
     clean_inplace: bool = False,
@@ -161,5 +173,4 @@ def check_dataset_exif(
     pprint(have_exif)
 
     return imgslist2dataview(have_exif,dataset)
-
 

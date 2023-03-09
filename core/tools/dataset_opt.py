@@ -26,9 +26,10 @@ from core.logging import logging
 
 from core.cache import WEAK_CACHE
 from core.importer import parse_sample_info, generate_sgcc_sample
-from .common_tools import imgslist2dataview
+from .common_tools import imgslist2dataview,print_time_deco
 
 
+@print_time_deco
 def update_dataset(
     dataset: Optional[focd.Dataset] = None,
     update_imgs_asbase: bool = True,
@@ -134,14 +135,15 @@ def update_dataset(
 
                     update_img_path_list.append(sample.filepath)
 
-    update_dataview = imgslist2dataview(update_img_path_list, dataset)
+    # NOTE: 注意这里解除装饰器
+    update_dataview = imgslist2dataview.__wrapped__(update_img_path_list, dataset)
     update_dataview.tag_samples(str(datetime.now()) + "update")
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
 
-
+@print_time_deco
 def add_dataset_fields_by_txt(
     txt_path: Union[str, List[str]],
     fields_dict: Union[str, dict],
@@ -188,7 +190,7 @@ def add_dataset_fields_by_txt(
     if session is not None:
         session.refresh()
 
-
+@print_time_deco
 def clean_dataset(
     dataset: Optional[focd.Dataset] = None,
 ):
