@@ -15,7 +15,6 @@ from concurrent import futures
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
-from tqdm import tqdm
 
 from core.utils import get_sample_field, md5sum, get_all_file_path
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
@@ -101,17 +100,12 @@ def export_anno_file(
         tasks = [
             exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
         ]
-        for task in tqdm(
-            futures.as_completed(tasks),
-            total=len(dataset),
-            desc="anno导出进度:",
-            dynamic_ncols=True,
-            colour="green",
-        ):
-            save_path = task.result()
 
-    print("anno 导出完毕")
-
+        with fo.ProgressBar(
+            total=len(dataset), start_msg="anno导出进度:", complete_msg="anno导出完毕"
+        ) as pb:
+            for task in pb(futures.as_completed(tasks)):
+                save_path = task.result()
 
 def _export_one_sample(sample, exporter, get_anno, save_dir):
     image_path = sample.filepath
@@ -160,12 +154,8 @@ def export_sample(
                 exec.submit(_export_one_sample, sample, exporter, get_anno, save_dir)
                 for sample in dataset
             ]
-            for task in tqdm(
-                futures.as_completed(tasks),
-                total=len(dataset),
-                desc="样本导出进度:",
-                dynamic_ncols=True,
-                colour="green",
-            ):
-                result = task.result()
-    print("样本导出完毕")
+            with fo.ProgressBar(
+                total=len(dataset), start_msg="样本导出进度:", complete_msg="样本导出完毕"
+            ) as pb:
+                for task in pb(futures.as_completed(tasks)):
+                    result = task.result()

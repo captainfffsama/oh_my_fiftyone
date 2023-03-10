@@ -29,14 +29,18 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
+from core.model.object_detection import ProtoBaseDetection, ChiebotObjectDetection
+
 
 def print_time_deco(func):
     @wraps(func)
-    def wrapper(*args,**kwargs):
-        result=func(*args,**kwargs)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
         print("操作完成时间: {}".format(datetime.now()))
         return result
+
     return wrapper
+
 
 @print_time_deco
 def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
@@ -120,12 +124,13 @@ def imgslist2dataview(
 
     return dataset.select_by("filepath", imgslist)
 
+
 @print_time_deco
 def check_dataset_exif(
     dataset: Optional[focd.Dataset] = None,
     clean_inplace: bool = False,
     log_path: Optional[str] = None,
-    cv2_fix:bool=False,
+    cv2_fix: bool = False,
 ) -> fo.DatasetView:
     """检查数据集中是否包含exif
 
@@ -145,32 +150,93 @@ def check_dataset_exif(
         else:
             dataset = s.dataset
 
-    have_exif =[]
+    have_exif = []
     for sample in tqdm(
-                dataset,
-                desc="exif 检查进度:",
-                dynamic_ncols=True,
-                colour="green",
-            ):
-        img=Image.open(sample["filepath"])
+        dataset,
+        desc="exif 检查进度:",
+        dynamic_ncols=True,
+        colour="green",
+    ):
+        img = Image.open(sample["filepath"])
         if "exif" in img.info:
             have_exif.append(sample["filepath"])
             if clean_inplace:
                 try:
                     piexif.remove(sample["filepath"])
                 except Exception as e:
-                    logging.critical("{} remove piexif faild".format(sample["filepath"]))
+                    logging.critical(
+                        "{} remove piexif faild".format(sample["filepath"])
+                    )
                     print("{} remove piexif faild".format(sample["filepath"]))
                     if cv2_fix and isinstance(e, piexif.InvalidImageDataError):
-                        img=cv2.imread(sample.filepath,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
-                        cv2.imwrite(sample.filepath,img)
+                        img = cv2.imread(
+                            sample.filepath,
+                            cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR,
+                        )
+                        cv2.imwrite(sample.filepath, img)
 
     if log_path:
-        with open(log_path,"w") as fw:
-            fw.writelines([x+"\n" for x in have_exif])
+        with open(log_path, "w") as fw:
+            fw.writelines([x + "\n" for x in have_exif])
 
     print("Here is exif image path:")
     pprint(have_exif)
 
-    return imgslist2dataview(have_exif,dataset)
+    return imgslist2dataview(have_exif, dataset)
 
+
+@print_time_deco
+def model_det(
+    dataset: Optional[focd.Dataset] = None,
+    model: Optional[ProtoBaseDetection] = None,
+    model_initargs: Optional[dict] = None,
+):
+    """使用模型检测数据集,并将结果存到sample的model_predic 字段
+
+    Args:
+        dataset (Optional[focd.Dataset], optional): 同之前. Defaults to None.
+        model (Optional[ProtoBaseDetection], optional): 用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
+        model_initargs: (Optional[dict],optinal): 用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
+    """
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+    if model is None:
+        if model_initargs is None:
+            model_initargs = {}
+        model = ChiebotObjectDetection(**model_initargs)
+
+    if isinstance(model, ProtoBaseDetection):
+        with fo.ProgressBar(
+            total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
+        ) as pb:
+            with model as m:
+                deal_one = lambda s, mm: (s, mm(s.filepath))
+                with futures.ThreadPoolExecutor(10) as exec:
+                    tasks = [
+                        exec.submit(deal_one, sample, m) for sample in dataset
+                    ]
+                    for task in pb(futures.as_completed(tasks)):
+                        sample, objs = task.result()
+                        det_r = [
+                            fo.Detection(
+                                label=obj[0], bounding_box=obj[2:], confidence=obj[1]
+                            )
+                            for obj in objs
+                        ]
+
+                        sample["model_predict"] = fo.Detections(
+                            detections=det_r
+                        )
+
+                        sample.save()
+    else:
+        pass
+
+    session = WEAK_CACHE.get("session", None)
+    if session is not None:
+        session.refresh()

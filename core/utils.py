@@ -1,10 +1,13 @@
+import base64
 import hashlib
-from typing import Tuple
+from typing import Tuple,Union
 import time
 from contextlib import contextmanager
 import os
 import xml.etree.ElementTree as ET
 
+
+import cv2
 import fiftyone.core.metadata as fom
 from PIL import Image
 import numpy as np
@@ -186,3 +189,22 @@ def get_sample_field(sample, field, default=None):
         return sample.get_field(field)
     else:
         return default
+
+def img2base64(file:Union[str,np.ndarray]) -> bytes:
+    if isinstance(file, str):
+        img_file = open(file,'rb')   # 二进制打开图片文件
+        img_b64encode = base64.b64encode(img_file.read())  # base64编码
+        img_file.close()  # 文件关闭
+        return img_b64encode
+    elif isinstance(file,np.ndarray):
+        img_str = cv2.imencode('.jpg',file)[1].tostring()  # 将图片编码成流数据，放到内存缓存中，然后转化成string格式
+        img_b64encode = base64.b64encode(img_str) # 编码成base64
+        return img_b64encode
+    else:
+        return None
+
+def base642img(base64code:bytes) -> np.ndarray:
+    str_decode = base64.b64decode(base64code)
+    nparr = np.fromstring(str_decode, np.uint8)
+    img_restore = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    return img_restore
