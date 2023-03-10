@@ -21,7 +21,8 @@ class ChiebotObjectDetection(ProtoBaseDetection):
         self.model_type = model_type
 
     def __enter__(self):
-        self.channel = grpc.insecure_channel(self.host)
+        channel_opt = [('grpc.max_send_message_length', 512 * 1024 * 1024), ('grpc.max_receive_message_length', 512 * 1024 * 1024)]
+        self.channel = grpc.insecure_channel(self.host,options =channel_opt)
         self.stub = dldetection_pb2_grpc.AiServiceStub(self.channel)
         return self
 
