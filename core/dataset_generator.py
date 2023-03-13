@@ -12,6 +12,7 @@ import json
 from concurrent import futures
 import shutil
 from datetime import datetime
+import traceback
 
 
 from prompt_toolkit.shortcuts import ProgressBar
@@ -75,7 +76,7 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
                     sample = task.result()
                 except Exception as e:
                     sample = None
-                    import_error.append(e)
+                    import_error.append((e,traceback.format_exc(limit=-1)))
                     # raise e
                 if sample is None:
                     continue
@@ -91,9 +92,9 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
         dataset.info["dataset_dir"]=data_dir
         dataset.save()
     if import_error:
-        logging.critical("===================================")
+        logging.critical("=================CRIRICAL==================")
         for i in import_error:
-            logging.critical(i)
+            logging.critical(i[-1])
         print("same error happened in import,please check {}".format(logging_path))
     return dataset
 
