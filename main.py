@@ -34,7 +34,7 @@ def launch_dataset(_d11: focd.Dataset):
     session = fo.launch_app(dataset=_d11, address="0.0.0.0", remote=True, auto=True)
     WEAK_CACHE["session"] = session
     dataset: DatasetClass = lambda session=session: session.dataset
-    embed()
+    embed(colors="linux")
     session.close()
 
 
