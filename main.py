@@ -23,6 +23,7 @@ import core.tools as T
 from core.cache import WEAK_CACHE
 from core.data_preprocess import preprocess
 from core.dataset_generator import generate_dataset, import_new_sample2exist_dataset
+from core.model import ChiebotObjectDetection
 
 
 class DatasetClass(Protocol):

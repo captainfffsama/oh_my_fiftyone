@@ -12,6 +12,7 @@ from typing import Optional, Union, List
 from pprint import pprint
 from datetime import datetime
 from functools import wraps
+import time
 
 import os
 import json
@@ -29,14 +30,20 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
-from core.model.object_detection import ProtoBaseDetection, ChiebotObjectDetection
+from core.model import ProtoBaseDetection, ChiebotObjectDetection
 
 
 def print_time_deco(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        result = func(*args, **kwargs)
-        print("操作完成时间: {}".format(datetime.now()))
+        start = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            end = time.perf_counter()
+            print("\033[1;34m操作完成时间: {}, 操作耗时: {} 秒\033[0m".format(datetime.now(),end-start))
         return result
 
     return wrapper
@@ -135,10 +142,18 @@ def check_dataset_exif(
     """检查数据集中是否包含exif
 
     Args:
-        dataset (Optional[focd.Dataset], optional): _description_. Defaults to None.
-        clean_inplace (bool, optional): 是否原地移除exif. Defaults to False.
-        log_path (Optional[str], optional): 若不为None,则将包含了exif的样本路径导出到txt. Defaults to None.
-        cv2_fix (bool, optinal): 在clean_inplace为True的情况下,若piexif报错,指示是否使用opencv读入读出. Defaults False,
+        dataset (Optional[focd.Dataset], optional):
+            _description_. Defaults to None.
+
+        clean_inplace (bool, optional):
+            是否原地移除exif. Defaults to False.
+
+        log_path (Optional[str], optional):
+            若不为None,则将包含了exif的样本路径导出到txt. Defaults to None.
+
+        cv2_fix (bool, optinal):
+            在clean_inplace为True的情况下,若piexif报错,指示是否使用opencv读入读出. Defaults False,
+
     Returns:
         fo.DatasetView: 包含了exif的数据的dataview
     """
@@ -187,16 +202,26 @@ def check_dataset_exif(
 
 @print_time_deco
 def model_det(
-    dataset: Optional[focd.Dataset] = None,
-    model: Optional[ProtoBaseDetection] = None,
     model_initargs: Optional[dict] = None,
+    model: Optional[ProtoBaseDetection] = None,
+    dataset: Optional[focd.Dataset] = None,
+    save_field: Optional[str] = "model_predict",
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
 
     Args:
-        dataset (Optional[focd.Dataset], optional): 同之前. Defaults to None.
-        model (Optional[ProtoBaseDetection], optional): 用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
-        model_initargs: (Optional[dict],optinal): 用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
+        model_initargs: (Optional[dict],optinal):
+            用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
+
+        model (Optional[ProtoBaseDetection], optional):
+            用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
+
+        dataset (Optional[focd.Dataset], optional):
+            同之前. Defaults to None.
+
+        save_field: Optional[str] = "model_predict":
+            用来保存结果的字段.默认是Sample的model_predict 字段
+
     """
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -215,24 +240,15 @@ def model_det(
             total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
         ) as pb:
             with model as m:
-                deal_one = lambda s, mm: (s, mm(s.filepath))
+                deal_one = lambda s, mm: (s, mm.predict(s.filepath))
                 with futures.ThreadPoolExecutor(10) as exec:
                     tasks = [
                         exec.submit(deal_one, sample, m) for sample in dataset
                     ]
                     for task in pb(futures.as_completed(tasks)):
                         sample, objs = task.result()
-                        det_r = [
-                            fo.Detection(
-                                label=obj[0], bounding_box=obj[2:], confidence=obj[1]
-                            )
-                            for obj in objs
-                        ]
 
-                        sample["model_predict"] = fo.Detections(
-                            detections=det_r
-                        )
-
+                        sample[save_field] = objs
                         sample.save()
     else:
         pass
