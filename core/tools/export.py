@@ -9,10 +9,12 @@
 """
 from typing import Optional
 
+import base64
 import os
 import json
 from concurrent import futures
 
+import numpy as np
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 
@@ -69,9 +71,18 @@ def _export_one_sample_anno(sample, save_dir):
 
             result["objs_info"].append(obj)
 
+    embedding:Optional[np.ndarray] =get_sample_field(sample,"embedding",None)
+
+    if embedding is not None:
+        result["embedding"]=base64.b64encode(embedding.tobytes()).decode("utf-8")
+
     save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
-    with open(save_path, "w") as fw:
-        json.dump(result, fw, indent=4, sort_keys=True)
+    try:
+        with open(save_path, "w") as fw:
+            json.dump(result, fw, indent=4, sort_keys=True)
+    except Exception as e:
+        breakpoint()
+        raise e
 
     return save_path
 

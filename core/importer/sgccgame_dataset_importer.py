@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-03 12:46:25
+@LastEditTime: 2023-03-21 13:19:55
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -11,6 +11,9 @@
 import os
 from typing import Optional, Tuple, List
 import json
+import base64
+
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.utils.data as foud
@@ -160,6 +163,9 @@ def parse_sample_info(
     anno_dict["additions"] = anno.get("additions", None)
     anno_dict["tags"] = anno.get("sample_tags", [])
     anno_dict["chiebot_sample_tags"]=anno.get("chiebot_sample_tags",[])
+
+    if anno.get("embedding",None) is not None:
+        anno_dict["embedding"] =np.frombuffer(base64.b64decode(anno["embedding"].encode("utf-8")))
 
     return img_meta, label_info, anno_dict
 

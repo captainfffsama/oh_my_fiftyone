@@ -9,6 +9,7 @@ from IPython import embed
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
+import fiftyone.brain as fob
 from fiftyone import ViewField as F
 
 from prompt_toolkit import PromptSession, prompt
