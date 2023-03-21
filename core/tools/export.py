@@ -13,6 +13,7 @@ import base64
 import os
 import json
 from concurrent import futures
+import shutil
 
 import numpy as np
 import fiftyone as fo
@@ -26,7 +27,7 @@ from core.cache import WEAK_CACHE
 from .common_tools import print_time_deco
 
 
-def _export_one_sample_anno(sample, save_dir):
+def _export_one_sample_anno(sample, save_dir, backup_dir):
     result = {}
     need_export_map = {
         "data_source": "data_source",
@@ -41,9 +42,9 @@ def _export_one_sample_anno(sample, save_dir):
         if vv:
             result[v] = vv
 
-    result["chiebot_sample_tags"] = get_sample_field(
-        sample, "chiebot_sample_tags", default=[]
-    )
+    result["chiebot_sample_tags"] = get_sample_field(sample,
+                                                     "chiebot_sample_tags",
+                                                     default=[])
 
     result["img_shape"] = (
         sample["metadata"].height,
@@ -71,12 +72,24 @@ def _export_one_sample_anno(sample, save_dir):
 
             result["objs_info"].append(obj)
 
-    embedding:Optional[np.ndarray] =get_sample_field(sample,"embedding",None)
+    embedding: Optional[np.ndarray] = get_sample_field(sample, "embedding",
+                                                       None)
 
     if embedding is not None:
-        result["embedding"]=base64.b64encode(embedding.tobytes()).decode("utf-8")
+        result["embedding"] = base64.b64encode(
+            embedding.tobytes()).decode("utf-8")
 
-    save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
+    save_path = os.path.join(save_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno")
+
+    if backup_dir is not None:
+        ori_anno = os.path.splitext(sample.filepath)[0] + ".anno"
+        if os.path.exists(ori_anno):
+            shutil.copy(
+                ori_anno,
+                os.path.join(backup_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno"))
+
     try:
         with open(save_path, "w") as fw:
             json.dump(result, fw, indent=4, sort_keys=True)
@@ -91,12 +104,14 @@ def _export_one_sample_anno(sample, save_dir):
 def export_anno_file(
     save_dir: str,
     dataset: Optional[focd.Dataset] = None,
+    backup_dir: Optional[str] = None,
 ):
     """导出数据集的anno文件到 save_dir
 
     Args:
         save_dir (str): 保存anno的目录
         dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
+        backup_dir (str,optional) = None: 设置anno备份的目录,若不设置为None就不备份
     """
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -107,16 +122,21 @@ def export_anno_file(
             dataset = s.dataset
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
+    if backup_dir is not None:
+        if not os.path.exists(backup_dir):
+            os.mkdir(backup_dir)
     with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir) for sample in dataset
+            exec.submit(_export_one_sample_anno, sample, save_dir, backup_dir)
+            for sample in dataset
         ]
 
-        with fo.ProgressBar(
-            total=len(dataset), start_msg="anno导出进度:", complete_msg="anno导出完毕"
-        ) as pb:
+        with fo.ProgressBar(total=len(dataset),
+                            start_msg="anno导出进度:",
+                            complete_msg="anno导出完毕") as pb:
             for task in pb(futures.as_completed(tasks)):
                 save_path = task.result()
+
 
 def _export_one_sample(sample, exporter, get_anno, save_dir):
     image_path = sample.filepath
@@ -135,9 +155,10 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
 
 
 @print_time_deco
-def export_sample(
-    save_dir: str, dataset: Optional[focd.Dataset] = None, get_anno=True, **kwargs
-):
+def export_sample(save_dir: str,
+                  dataset: Optional[focd.Dataset] = None,
+                  get_anno=True,
+                  **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
     Args:
@@ -162,11 +183,11 @@ def export_sample(
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(48) as exec:
             tasks = [
-                exec.submit(_export_one_sample, sample, exporter, get_anno, save_dir)
-                for sample in dataset
+                exec.submit(_export_one_sample, sample, exporter, get_anno,
+                            save_dir) for sample in dataset
             ]
-            with fo.ProgressBar(
-                total=len(dataset), start_msg="样本导出进度:", complete_msg="样本导出完毕"
-            ) as pb:
+            with fo.ProgressBar(total=len(dataset),
+                                start_msg="样本导出进度:",
+                                complete_msg="样本导出完毕") as pb:
                 for task in pb(futures.as_completed(tasks)):
                     result = task.result()
