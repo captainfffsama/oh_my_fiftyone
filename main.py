@@ -196,6 +196,8 @@ def preprocess_data():
     )
 
     save_dir = os.path.abspath(save_dir)
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
 
     valida1 = Validator.from_callable(lambda x: x in ("y", "n"), error_message="瞎选什么啊")
     t2 = prompt_session.prompt(
