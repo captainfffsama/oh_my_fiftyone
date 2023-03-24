@@ -2,8 +2,8 @@
 '''
 @Author: captainsama
 @Date: 2023-02-27 16:20:02
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-03 15:02:45
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-24 17:21:51
 @FilePath: /dataset_manager/core/exporter/sgccgame_dataset_exporter.py
 @Description:
 '''
@@ -111,7 +111,6 @@ class SGCCGameDatasetExporter(fouvoc.VOCDetectionDatasetExporter):
             image_format,
             extra_attrs,
         )
-        self._export_dir = export_dir
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)

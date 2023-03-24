@@ -18,6 +18,8 @@ import shutil
 import numpy as np
 import fiftyone as fo
 import fiftyone.core.dataset as focd
+from fiftyone.utils.coco import COCODetectionDatasetExporter
+from fiftyone.utils.yolo import YOLOv4DatasetExporter,YOLOv5DatasetExporter
 
 from core.utils import get_sample_field, md5sum, get_all_file_path
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
@@ -27,7 +29,7 @@ from core.cache import WEAK_CACHE
 from .common_tools import print_time_deco
 
 
-def _export_one_sample_anno(sample, save_dir, backup_dir):
+def _export_one_sample_anno(sample, save_dir, backup_dir=None):
     result = {}
     need_export_map = {
         "data_source": "data_source",
@@ -153,11 +155,18 @@ def _export_one_sample(sample, exporter, get_anno, save_dir):
     if get_anno:
         _export_one_sample_anno(sample, save_dir)
 
+FORMAT_CLASS_MAP={
+    "voc": SGCCGameDatasetExporter,
+    "coco": COCODetectionDatasetExporter,
+    "yolov4": YOLOv4DatasetExporter,
+    "yolov5": YOLOv5DatasetExporter,
+}
 
 @print_time_deco
 def export_sample(save_dir: str,
                   dataset: Optional[focd.Dataset] = None,
                   get_anno=True,
+                  format:str="voc",
                   **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
@@ -165,8 +174,11 @@ def export_sample(save_dir: str,
         save_dir (str): 导出文件的目录
         dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
         get_anno (bool, optional): 是否导出anno. Defaults to True.
+        format (str,optional): 导出格式,必须是 "voc","coco","yolov4","yolov5"之一,默认voc
         **kwargs: 支持``SGCCGameDatasetExporter`` 的参数
     """
+    if format not in FORMAT_CLASS_MAP.keys():
+        raise ValueError("format must be in {}".format(str(FORMAT_CLASS_MAP.keys())))
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
         if s is None:
@@ -178,7 +190,8 @@ def export_sample(save_dir: str,
         os.mkdir(save_dir)
     if "export_dir" in kwargs:
         kwargs.pop("export_dir")
-    exporter = SGCCGameDatasetExporter(export_dir=save_dir, **kwargs)
+
+    exporter =FORMAT_CLASS_MAP[format](export_dir=save_dir,**kwargs)
     with exporter:
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(48) as exec:
