@@ -256,3 +256,60 @@ def model_det(
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
+@print_time_deco
+def get_embedding(
+    model_initargs: Optional[dict] = None,
+    model: Optional[ProtoBaseDetection] = None,
+    dataset: Optional[focd.Dataset] = None,
+    save_field: Optional[str] = "embedding",
+):
+    """使用模型检测数据集,并将结果存到sample的model_predic 字段
+
+    Args:
+        model_initargs: (Optional[dict],optinal):
+            用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
+
+        model (Optional[ProtoBaseDetection], optional):
+            用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
+
+        dataset (Optional[focd.Dataset], optional):
+            同之前. Defaults to None.
+
+        save_field: Optional[str] = "model_predict":
+            用来保存结果的字段.默认是Sample的model_predict 字段
+
+    """
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+    if model is None:
+        if model_initargs is None:
+            model_initargs = {}
+        model = ChiebotObjectDetection(**model_initargs)
+
+    if isinstance(model, ProtoBaseDetection):
+        with fo.ProgressBar(
+            total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
+        ) as pb:
+            with model as m:
+                deal_one = lambda s, mm: (s, mm.embed(s.filepath))
+                with futures.ThreadPoolExecutor(10) as exec:
+                    tasks = [
+                        exec.submit(deal_one, sample, m) for sample in dataset
+                    ]
+                    for task in pb(futures.as_completed(tasks)):
+                        sample, objs = task.result()
+
+                        sample[save_field] = objs
+                        sample.save()
+    else:
+        pass
+
+    session = WEAK_CACHE.get("session", None)
+    if session is not None:
+        session.refresh()

@@ -4,6 +4,7 @@ package aiservice;
 
 service AiService {
   rpc DlDetection (DlRequest) returns (DlResponse) {} // 深度学习检测服务
+  rpc DlEmbeddingGet (DlEmbeddingRequest) returns (Tensor) {} // 深度学习检测服务
 }
 
 message DlRequest {
@@ -36,4 +37,13 @@ message DlResult{
 
 message DlResponse{
   repeated DlResult results = 1; // 检测结果
+}
+
+message DlEmbeddingRequest {
+  bytes imdata = 1; // 图像二进制数据-base64编码
+  repeated int32 imsize=2;
+}
+message Tensor {
+  repeated float data =1;
+  repeated int32 shape =2;
 }

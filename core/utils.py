@@ -208,3 +208,9 @@ def base642img(base64code:bytes) -> np.ndarray:
     nparr = np.fromstring(str_decode, np.uint8)
     img_restore = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     return img_restore
+
+
+def tensor_proto2np(tensor_pb):
+    np_matrix = np.array(tensor_pb.data,
+                         dtype=np.float).reshape(tensor_pb.shape)
+    return np_matrix

@@ -2,8 +2,8 @@
 '''
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-10 11:20:41
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-03-24 12:30:45
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -16,7 +16,8 @@
     - imgslist2dataview: 传入文件列表本身或者路径得到对应的dataview
     - check_dataset_exif: 检查数据库中文件是否包含了exif并导出包含了exif的样本的dataview
     - model_det: 使用模型检测样本
+    - get_embedding: 使用模型获取嵌入
 '''
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset
-from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det
+from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding
