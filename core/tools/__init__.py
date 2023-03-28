@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-24 12:30:45
+@LastEditTime: 2023-03-28 20:01:25
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -17,7 +17,9 @@
     - check_dataset_exif: 检查数据库中文件是否包含了exif并导出包含了exif的样本的dataview
     - model_det: 使用模型检测样本
     - get_embedding: 使用模型获取嵌入
+    - generate_qdrant_idx: 使用qdrant数据库生成相似性表示
+    - duplicate_det: 分段检查重复样本
 '''
 from .export import export_anno_file, export_sample
-from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset
+from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det
 from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding

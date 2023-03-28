@@ -15,6 +15,13 @@
 - grpc-tools==1.51.0
 - qdrant-client
 
+# 需要注意的设定字段
+## 数据集字段和样本字段
+- `embedding`: 存放着样本嵌入
+
+## brain_key
+- `im_sim_qdrant`: 存放着使用 qdrant 计算数据的相似性
+
 
 # TODO
 
