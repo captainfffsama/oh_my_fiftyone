@@ -6,13 +6,15 @@
 
 # requirements
 
-- fiftyone
+- fiftyone >=0.20.0
 - ipython
 - loguru
 - pid
 - piexif
-- grpc == 1.37.0
-- grpc-tools==1.37.0
+- grpc == 1.51.0
+- grpc-tools==1.51.0
+- qdrant-client
+
 
 # TODO
 
