@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-28 20:01:25
+@LastEditTime: 2023-04-03 16:07:51
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -21,5 +21,5 @@
     - duplicate_det: 分段检查重复样本
 '''
 from .export import export_anno_file, export_sample
-from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det
+from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_detV1, duplicate_det
 from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding

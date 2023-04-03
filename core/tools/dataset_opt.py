@@ -11,7 +11,7 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit.validation import Validator
 
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Callable
 from pprint import pprint
 from datetime import datetime
 from copy import deepcopy
@@ -23,6 +23,8 @@ from concurrent import futures
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.brain as fob
+from sklearn.metrics import pairwise_distances
+import numpy as np
 from tqdm import tqdm
 
 from core.utils import get_sample_field, md5sum, get_all_file_path
@@ -251,10 +253,10 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
     return result
 
 
-@print_time_deco
-def duplicate_det(dataset: Optional[focd.Dataset] = None,
-                  similar_thr: Optional[float] = None,
-                  similar_fraction: Optional[float] = None):
+# @print_time_deco
+def duplicate_detV1(dataset: Optional[focd.Dataset] = None,
+                    similar_thr: Optional[float] = None,
+                    similar_fraction: Optional[float] = None):
     assert similar_thr is not None or similar_fraction is not None, "similar_r and similar_fraction can not be None both!"
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -264,11 +266,11 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
         else:
             dataset = s.dataset
 
-    MAX_DATASET_LIMIT = 30
+    MAX_DATASET_LIMIT = 30000
 
-    valida = Validator.from_callable(lambda x: x in ("y", "n"),
+    valida = Validator.from_callable(lambda x: x in ("y", "t", "e"),
                                      error_message="瞎选什么啊")
-    sample_id_list = [dataset.values("id")]
+    sample_id_list = dataset.values("id")
     while len(sample_id_list) > MAX_DATASET_LIMIT:
         nodup_id = []
         for i in range(len(sample_id_list) // MAX_DATASET_LIMIT):
@@ -281,27 +283,212 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
                                                metric="cosine")
             similar_r.find_duplicates(similar_thr, similar_fraction)
             s.view = similar_r.duplicates_view()
-            t2 = prompt("是否完成非重复标记? [y/n]:",
-                        validator=valida,
-                        completer=WordCompleter(["y", "n"]))
+            print(len(similar_r.duplicates_view()))
+            t2 = prompt(
+                "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将打包结果退出去重 [y/t/e]:",
+                validator=valida,
+                completer=WordCompleter(["y", "t", "e"]))
             if t2 == "y":
                 nodup_id.extend(s.selected)
-                dup_ids=set(current_check)-set(s.selected)
+                dup_ids = set(current_check) - set(s.selected)
                 dataset.select(list(dup_ids)).tag_samples("dup")
-        sample_id_list=nodup_id
+            elif t2 == "t":
+                no_s_ids = set(current_check) - set(s.selected)
+                nodup_id.extend(no_s_ids)
+                dataset.select(s.selected).tag_samples("dup")
+            elif t2 == "e":
+                nodup_id.extend(s.selected)
+                dup_ids = set(current_check) - set(s.selected)
+                dataset.select(list(dup_ids)).tag_samples("dup")
+                return
+        sample_id_list = nodup_id
 
     if sample_id_list:
         dataset_t = dataset.select(sample_id_list)
         similar_r = fob.compute_similarity(dataset_t,
-                                            embeddings="embedding",
-                                            backend="sklearn",
-                                            metric="cosine")
+                                           embeddings="embedding",
+                                           backend="sklearn",
+                                           metric="cosine")
         similar_r.find_duplicates(similar_thr, similar_fraction)
         s.view = similar_r.duplicates_view()
-        t2 = prompt("是否完成非重复标记? [y/n]:",
-                    validator=valida,
-                    completer=WordCompleter(["y", "n"]))
+        t2 = prompt(
+            "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将打包结果退出去重 [y/t/e]:",
+            validator=valida,
+            completer=WordCompleter(["y", "t", "e"]))
         if t2 == "y":
-            dup_ids=set(sample_id_list)-set(s.selected)
+            dup_ids = set(sample_id_list) - set(s.selected)
             dataset.select(list(dup_ids)).tag_samples("dup")
+        elif t2 == "t":
+            no_s_ids = set(current_check) - set(s.selected)
+            nodup_id.extend(no_s_ids)
+            dataset.select(s.selected).tag_samples("dup")
+        elif t2 == "e":
+            no_s_ids = set(current_check) - set(s.selected)
+            nodup_id.extend(no_s_ids)
+            dataset.select(s.selected).tag_samples("dup")
 
+
+_le = lambda x, y: x <= y
+_ge = lambda x, y: x >= y
+
+PAIRWISE_METHOD_MAP = {
+    'cosine': _ge,
+    'cityblock': _le,
+    'euclidean': _le,
+    'l1': _le,
+    'l2': _le,
+    'manhattan': _le,
+    'braycurtis': _le,
+    'canberra': _le,
+    'chebyshev': _le,
+    'correlation': _le,
+    'dice': _le,
+    'hamming': _le,
+    'jaccard': _le,
+    'kulsinski': _le,
+    'mahalanobis': _le,
+    'minkowski': _le,
+    'rogerstanimoto': _le,
+    'russellrao': _le,
+    'seuclidean': _le,
+    'sokalmichener': _le,
+    'sokalsneath': _le,
+    'sqeuclidean': _le,
+    'yule': _le,
+}
+
+
+@print_time_deco
+def duplicate_det(dataset: Optional[focd.Dataset] = None,
+                  similar_thr: float = 0.99,
+                  check_thr: float = 0.95,
+                  similar_method: Union[str, Callable] = "cosine",
+                  import_dataset: Optional[focd.Dataset] = None):
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+
+    assert similar_method in PAIRWISE_METHOD_MAP, "similar method must be in {}".format(
+        PAIRWISE_METHOD_MAP.keys())
+
+    MAX_SIZE = 30000
+    query_imgs_id = dataset.values("id")
+    if import_dataset is None:
+        key_imgs_id = query_imgs_id
+        import_dataset = dataset
+    else:
+        key_imgs_id = import_dataset.values("id")
+
+    key_imgs_id_iter = iter(key_imgs_id)
+    query_imgs_id_iter = iter(query_imgs_id)
+
+    valida = Validator.from_callable(lambda x: x in ("y", "t", "e"),
+                                     error_message="瞎选什么啊")
+    try:
+        while True:
+            current_key = next(key_imgs_id_iter)
+            current_key_feat: np.ndarray = import_dataset[current_key][
+                "embedding"]
+            try:
+                query_imgs_id.remove(current_key)
+            except Exception as e:
+                pass
+            try:
+                count_t = 0
+                id_cache = []
+                feat_cache = []
+                need_check_ids = []
+                while True:
+                    current_query = next(query_imgs_id_iter)
+                    id_cache.append(current_query)
+                    feat_cache.append(dataset[current_query]["embedding"])
+                    count_t += 1
+                    if count_t == MAX_SIZE:
+                        pw_matrix = pairwise_distances(np.expand_dims(
+                            current_key_feat, 0),
+                                                       np.array(feat_cache),
+                                                       metric=similar_method,
+                                                       n_jobs=-1)
+                        if "cosine" == similar_method:
+                            is_dup_idx = np.where(pw_matrix >= similar_thr)
+                            need_check_idx = np.where(
+                                np.logical_and(pw_matrix >= check_thr,
+                                               pw_matrix < similar_thr))
+                        else:
+                            is_dup_idx = np.where(pw_matrix <= similar_thr)
+                            need_check_idx = np.where(
+                                np.logical_and(pw_matrix <= check_thr,
+                                               pw_matrix > similar_thr))
+
+                        dup_ids=[]
+                        for i in is_dup_idx[-1]:
+                            dup_ids.append(id_cache[i])
+                            query_imgs_id.remove(id_cache[i])
+
+                        dataset.select(dup_ids).tag_samples("dup")
+                        #手动清理
+                        need_check_ids.extend(
+                            [id_cache[i] for i in need_check_idx[-1]])
+                        count_t = 0
+                        id_cache.clear()
+                        feat_cache.clear()
+            except StopIteration as e:
+                pass
+            if feat_cache:
+                pw_matrix = pairwise_distances(np.expand_dims(
+                    current_key_feat, 0),
+                                               np.array(feat_cache),
+                                               metric=similar_method,
+                                               n_jobs=-1)
+                if "cosine" == similar_method:
+                    is_dup_idx = np.where(pw_matrix >= similar_thr)
+                    need_check_idx = np.where(
+                        np.logical_and(pw_matrix >= check_thr,
+                                       pw_matrix < similar_thr))
+                else:
+                    is_dup_idx = np.where(pw_matrix <= similar_thr)
+                    need_check_idx = np.where(
+                        np.logical_and(pw_matrix <= check_thr,
+                                       pw_matrix > similar_thr))
+
+                dup_ids=[]
+                for i in is_dup_idx[-1]:
+                    dup_ids.append(id_cache[i])
+                    query_imgs_id.remove(id_cache[i])
+
+                dataset.select(dup_ids).tag_samples("dup")
+
+                #手动清理
+                need_check_ids.extend(
+                    [id_cache[i] for i in need_check_idx[-1]])
+                count_t = 0
+                id_cache.clear()
+                feat_cache.clear()
+
+            if need_check_ids:
+                s.view = import_dataset.select(current_key).concat(
+                    dataset.select(need_check_ids))
+
+                t2 = prompt(
+                    "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
+                    validator=valida,
+                    completer=WordCompleter(["y", "t", "e"]))
+                if t2 == "y":
+                    dup_ids = set(need_check_ids) - set(s.selected)
+                    dataset.select(list(dup_ids)).tag_samples("dup")
+                elif t2 == "t":
+                    dup_ids = s.selected
+                    dataset.select(s.selected).tag_samples("dup")
+                elif t2 == "e":
+                    dup_ids = set(need_check_ids) - set(s.selected)
+                    dataset.select(list(dup_ids)).tag_samples("dup")
+                    break
+                for i in dup_ids:
+                    query_imgs_id.remove(i)
+
+    except StopIteration as e:
+        pass
