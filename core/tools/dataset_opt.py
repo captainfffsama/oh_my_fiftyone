@@ -360,8 +360,8 @@ PAIRWISE_METHOD_MAP = {
 
 @print_time_deco
 def duplicate_det(dataset: Optional[focd.Dataset] = None,
-                  similar_thr: float = 0.99,
-                  check_thr: float = 0.95,
+                  similar_thr: float = 0.995,
+                  check_thr: float = 0.985,
                   similar_method: Union[str, Callable] = "cosine",
                   import_dataset: Optional[focd.Dataset] = None):
     if dataset is None:
@@ -388,107 +388,114 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
 
     valida = Validator.from_callable(lambda x: x in ("y", "t", "e"),
                                      error_message="瞎选什么啊")
-    try:
-        while True:
-            current_key = next(key_imgs_id_iter)
-            current_key_feat: np.ndarray = import_dataset[current_key][
-                "embedding"]
-            try:
-                query_imgs_id.remove(current_key)
-            except Exception as e:
-                pass
-            try:
-                count_t = 0
-                id_cache = []
-                feat_cache = []
-                need_check_ids = []
-                while True:
-                    current_query = next(query_imgs_id_iter)
-                    id_cache.append(current_query)
-                    feat_cache.append(dataset[current_query]["embedding"])
-                    count_t += 1
-                    if count_t == MAX_SIZE:
-                        pw_matrix = pairwise_distances(np.expand_dims(
-                            current_key_feat, 0),
-                                                       np.array(feat_cache),
-                                                       metric=similar_method,
-                                                       n_jobs=-1)
-                        if "cosine" == similar_method:
-                            is_dup_idx = np.where(pw_matrix >= similar_thr)
-                            need_check_idx = np.where(
-                                np.logical_and(pw_matrix >= check_thr,
-                                               pw_matrix < similar_thr))
-                        else:
-                            is_dup_idx = np.where(pw_matrix <= similar_thr)
-                            need_check_idx = np.where(
-                                np.logical_and(pw_matrix <= check_thr,
-                                               pw_matrix > similar_thr))
+    print("start dup det")
 
-                        dup_ids=[]
-                        for i in is_dup_idx[-1]:
-                            dup_ids.append(id_cache[i])
-                            query_imgs_id.remove(id_cache[i])
+    with fo.ProgressBar(total=len(key_imgs_id), start_msg="样本检查重复进度:",
+                                complete_msg="样本重复检查完毕") as pb:
+        try:
+            while True:
 
-                        dataset.select(dup_ids).tag_samples("dup")
-                        #手动清理
-                        need_check_ids.extend(
-                            [id_cache[i] for i in need_check_idx[-1]])
-                        count_t = 0
-                        id_cache.clear()
-                        feat_cache.clear()
-            except StopIteration as e:
-                pass
-            if feat_cache:
-                pw_matrix = pairwise_distances(np.expand_dims(
-                    current_key_feat, 0),
-                                               np.array(feat_cache),
-                                               metric=similar_method,
-                                               n_jobs=-1)
-                if "cosine" == similar_method:
-                    is_dup_idx = np.where(pw_matrix >= similar_thr)
-                    need_check_idx = np.where(
-                        np.logical_and(pw_matrix >= check_thr,
-                                       pw_matrix < similar_thr))
-                else:
-                    is_dup_idx = np.where(pw_matrix <= similar_thr)
-                    need_check_idx = np.where(
-                        np.logical_and(pw_matrix <= check_thr,
-                                       pw_matrix > similar_thr))
+                current_key = next(key_imgs_id_iter)
+                current_key_feat: np.ndarray = import_dataset[current_key][
+                    "embedding"]
+                try:
+                    query_imgs_id.remove(current_key)
+                except Exception as e:
+                    pass
+                try:
+                    count_t = 0
+                    id_cache = []
+                    feat_cache = []
+                    need_check_ids = []
+                    while True:
+                        current_query = next(query_imgs_id_iter)
+                        id_cache.append(current_query)
+                        feat_cache.append(dataset[current_query]["embedding"])
+                        count_t += 1
+                        if count_t == MAX_SIZE:
+                            pw_matrix = pairwise_distances(np.expand_dims(
+                                current_key_feat, 0),
+                                                        np.array(feat_cache),
+                                                        metric=similar_method,
+                                                        n_jobs=-1)
+                            if "cosine" == similar_method:
+                                is_dup_idx = np.where(pw_matrix >= similar_thr)
+                                need_check_idx = np.where(
+                                    np.logical_and(pw_matrix >= check_thr,
+                                                pw_matrix < similar_thr))
+                            else:
+                                is_dup_idx = np.where(pw_matrix <= similar_thr)
+                                need_check_idx = np.where(
+                                    np.logical_and(pw_matrix <= check_thr,
+                                                pw_matrix > similar_thr))
 
-                dup_ids=[]
-                for i in is_dup_idx[-1]:
-                    dup_ids.append(id_cache[i])
-                    query_imgs_id.remove(id_cache[i])
+                            dup_ids=[]
+                            for i in is_dup_idx[-1]:
+                                dup_ids.append(id_cache[i])
+                                query_imgs_id.remove(id_cache[i])
 
-                dataset.select(dup_ids).tag_samples("dup")
+                            dataset.select(dup_ids).tag_samples("dup")
+                            #手动清理
+                            need_check_ids.extend(
+                                [id_cache[i] for i in need_check_idx[-1]])
+                            count_t = 0
+                            id_cache.clear()
+                            feat_cache.clear()
+                except StopIteration as e:
+                    pass
+                if feat_cache:
+                    pw_matrix = pairwise_distances(np.expand_dims(
+                        current_key_feat, 0),
+                                                np.array(feat_cache),
+                                                metric=similar_method,
+                                                n_jobs=-1)
+                    if "cosine" == similar_method:
+                        is_dup_idx = np.where(pw_matrix >= similar_thr)
+                        need_check_idx = np.where(
+                            np.logical_and(pw_matrix >= check_thr,
+                                        pw_matrix < similar_thr))
+                    else:
+                        is_dup_idx = np.where(pw_matrix <= similar_thr)
+                        need_check_idx = np.where(
+                            np.logical_and(pw_matrix <= check_thr,
+                                        pw_matrix > similar_thr))
 
-                #手动清理
-                need_check_ids.extend(
-                    [id_cache[i] for i in need_check_idx[-1]])
-                count_t = 0
-                id_cache.clear()
-                feat_cache.clear()
+                    dup_ids=[]
+                    for i in is_dup_idx[-1]:
+                        dup_ids.append(id_cache[i])
+                        query_imgs_id.remove(id_cache[i])
 
-            if need_check_ids:
-                s.view = import_dataset.select(current_key).concat(
-                    dataset.select(need_check_ids))
+                    dataset.select(dup_ids).tag_samples("dup")
 
-                t2 = prompt(
-                    "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
-                    validator=valida,
-                    completer=WordCompleter(["y", "t", "e"]))
-                if t2 == "y":
-                    dup_ids = set(need_check_ids) - set(s.selected)
-                    dataset.select(list(dup_ids)).tag_samples("dup")
-                elif t2 == "t":
-                    dup_ids = s.selected
-                    dataset.select(s.selected).tag_samples("dup")
-                elif t2 == "e":
-                    dup_ids = set(need_check_ids) - set(s.selected)
-                    dataset.select(list(dup_ids)).tag_samples("dup")
-                    break
-                for i in dup_ids:
-                    query_imgs_id.remove(i)
+                    #手动清理
+                    need_check_ids.extend(
+                        [id_cache[i] for i in need_check_idx[-1]])
+                    count_t = 0
+                    id_cache.clear()
+                    feat_cache.clear()
 
-    except StopIteration as e:
-        pass
+                if need_check_ids:
+                    s.view = import_dataset.select(current_key).concat(
+                        dataset.select(need_check_ids).sort_by_similarity(current_key,k=50,brain_key="im_sim_qdrant"))
+
+                    t2 = prompt(
+                        "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
+                        validator=valida,
+                        completer=WordCompleter(["y", "t", "e"]))
+                    if t2 == "y":
+                        dup_ids = set(need_check_ids) - set(s.selected)
+                        dataset.select(list(dup_ids)).tag_samples("dup")
+                    elif t2 == "t":
+                        dup_ids = s.selected
+                        dataset.select(s.selected).tag_samples("dup")
+                    elif t2 == "e":
+                        dup_ids = set(need_check_ids) - set(s.selected)
+                        dataset.select(list(dup_ids)).tag_samples("dup")
+                        break
+                    for i in dup_ids:
+                        query_imgs_id.remove(i)
+            if not pb.complete:
+                pb.update(1)
+
+        except StopIteration as e:
+            pass
