@@ -248,7 +248,7 @@ def merge_label():
 
 所有标签有关文件须和图片在同一级
 ===========================================
-        请输入待处理的标签目录们的父目录:""")
+请输入待处理的标签目录们的父目录:""")
 
     prompt_session = PromptSession()
     labels_part_dir = prompt_session.prompt(win_show,
@@ -278,10 +278,11 @@ def merge_label():
     for folder in os.listdir(labels_part_dir):
         i=os.path.join(labels_part_dir,folder)
         if os.path.isdir(i):
-            result=parser_labels(folder)
-            for k,v in result.items():
-                label_dict[k].extend(v)
-                img_path_dict[k]=os.path.join(i,k+".jpg")
+            result=parser_labels(i)
+            if result is not None:
+                for k,v in result.items():
+                    label_dict[k].extend(v)
+                    img_path_dict[k]=os.path.join(i,k+".jpg")
 
     FORMAT_CLASS_MAP={
         "voc": SGCCGameDatasetExporter,
@@ -294,9 +295,9 @@ def merge_label():
     exporter =FORMAT_CLASS_MAP[save_label_type](export_dir=save_dir,)
     with exporter:
         with fo.ProgressBar(
-                total=len(label_dict.keys), start_msg="标签文件合并进度:", complete_msg="合并完毕"
+                total=len(label_dict.keys()), start_msg="标签文件合并进度:", complete_msg="合并完毕"
             ) as pb:
-            for k,v in label_dict.items():
+            for k,v in pb(label_dict.items()):
                 objs=fol_det_nms(v,iou_thr=0.7)
                 img_path=img_path_dict[k]
                 metadata=fo.ImageMetadata.build_for(img_path)

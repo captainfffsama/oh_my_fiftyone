@@ -259,14 +259,14 @@ def det_labels2npdict(labels:Union[List[fol.Detection],fol.Detections]) -> Dict[
         cls_name=label.label
         result[cls_name].append([x1,y1,x1+w,y1+h,score])
 
-    for k,v in result:
+    for k,v in result.items():
         result[k]=np.array(v)
 
     return result
 
 def np2dict2det_labels(label_dict:Dict[str,np.ndarray]) -> list:
     result_list=[]
-    for k,v in label_dict:
+    for k,v in label_dict.items():
         for obj in v:
             x1,y1,x2,y2,s=obj.tolist()
             result_list.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))
@@ -278,7 +278,7 @@ def fol_det_nms(labels:Union[List[fol.Detection],fol.Detections],iou_thr=0.5,sor
 
     r=[]
     for k,v in npdict.items():
-        nms_r=NMS(npdict,iou_thr,sort_by)
+        nms_r=NMS(v,iou_thr,sort_by)
         for obj in nms_r:
             x1,y1,x2,y2,s=obj.tolist()
             r.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))

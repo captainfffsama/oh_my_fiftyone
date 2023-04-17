@@ -2,17 +2,19 @@
 '''
 @Author: captainsama
 @Date: 2023-03-08 10:13:39
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-08 15:29:21
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-04-17 15:38:27
 @FilePath: /dataset_manager/test.py
 @Description:
 '''
 import os
 from concurrent import futures
 from tqdm import tqdm
+import numpy as np
 
 from PIL import Image
 import piexif
+from core.utils import NMS
 def get_all_file_path(file_dir:str,filter_=('.jpg')) -> list:
     #遍历文件夹下所有的file
     return [os.path.join(maindir,filename) for maindir,_,file_name_list in os.walk(file_dir) \
@@ -42,7 +44,5 @@ def check_exif(img_dir,log_path):
         fw.writelines(result)
 
 if __name__ == "__main__":
-    img_dir="/home/gpu-server/project/data/game_new/data_tmp"
-    log_path="/tmp/have_exif.log"
-    check_exif(img_dir,log_path)
-
+    a=np.array([[0,0,4,4,0.5],[1,1,4,4,0.3],[2,2,6,6,0.7]])
+    print(NMS(a))
