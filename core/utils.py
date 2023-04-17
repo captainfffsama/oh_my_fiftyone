@@ -1,14 +1,16 @@
 import base64
 import hashlib
-from typing import Tuple,Union
+from typing import Tuple,Union,Dict,List
 import time
 from contextlib import contextmanager
 import os
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 
 
 import cv2
 import fiftyone.core.metadata as fom
+import fiftyone.core.labels as fol
 from PIL import Image
 import numpy as np
 from core.logging import logging
@@ -214,3 +216,72 @@ def tensor_proto2np(tensor_pb):
     np_matrix = np.array(tensor_pb.data,
                          dtype=np.float).reshape(tensor_pb.shape)
     return np_matrix
+
+def NMS(boxes, iou_thr=0.5,sort_by="area"):
+    if len(boxes) == 0:
+        return []
+    if boxes.dtype.kind == "i":
+        boxes = boxes.astype("float")
+    pick = []
+    x1 = boxes[:,0]
+    y1 = boxes[:,1]
+    x2 = boxes[:,2]
+    y2 = boxes[:,3]
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    if sort_by=="area":
+        # small to large
+        idxs = np.argsort(area)[::-1]
+    else:
+        idxs=np.argsort(boxes[:,5])
+    while len(idxs) > 0:
+        last = len(idxs) - 1
+        i = idxs[last]
+        pick.append(i)
+        xx1 = np.maximum(x1[i], x1[idxs[:last]])
+        yy1 = np.maximum(y1[i], y1[idxs[:last]])
+        xx2 = np.minimum(x2[i], x2[idxs[:last]])
+        yy2 = np.minimum(y2[i], y2[idxs[:last]])
+        w = np.maximum(0, xx2 - xx1 + 1)
+        h = np.maximum(0, yy2 - yy1 + 1)
+        iou = (w * h) / (area[idxs[:last]]+area[i]-(w*h))
+        idxs = np.delete(idxs, np.concatenate(([last],
+            np.where(iou>iou_thr)[0])))
+    return boxes[pick]
+
+def det_labels2npdict(labels:Union[List[fol.Detection],fol.Detections]) -> Dict[str,np.ndarray]:
+    if isinstance(labels,fol.Detections):
+        labels=labels.detections
+
+    result = defaultdict(list)
+    for label in labels:
+        x1,y1,w,h=label.bounding_box
+        score = label.confidence if label.confidence is not None else 1.0
+        cls_name=label.label
+        result[cls_name].append([x1,y1,x1+w,y1+h,score])
+
+    for k,v in result:
+        result[k]=np.array(v)
+
+    return result
+
+def np2dict2det_labels(label_dict:Dict[str,np.ndarray]) -> list:
+    result_list=[]
+    for k,v in label_dict:
+        for obj in v:
+            x1,y1,x2,y2,s=obj.tolist()
+            result_list.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))
+
+    return result_list
+
+def fol_det_nms(labels:Union[List[fol.Detection],fol.Detections],iou_thr=0.5,sort_by="area"):
+    npdict=det_labels2npdict(labels)
+
+    r=[]
+    for k,v in npdict.items():
+        nms_r=NMS(npdict,iou_thr,sort_by)
+        for obj in nms_r:
+            x1,y1,x2,y2,s=obj.tolist()
+            r.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))
+
+    return fol.Detections(detections=r)
+
