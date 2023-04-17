@@ -234,7 +234,7 @@ def NMS(boxes, iou_thr=0.5,sort_by="area"):
         # small to large
         idxs = np.argsort(area)[::-1]
     else:
-        idxs=np.argsort(boxes[:,5])
+        idxs=np.argsort(boxes[:,4])
     while len(idxs) > 0:
         last = len(idxs) - 1
         i = idxs[last]
@@ -351,12 +351,8 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
                 os.path.join(backup_dir,
                              os.path.splitext(sample.filename)[0] + ".anno"))
 
-    try:
-        with open(save_path, "w") as fw:
-            json.dump(result, fw, indent=4, sort_keys=True)
-    except Exception as e:
-        breakpoint()
-        raise e
+    with open(save_path, "w") as fw:
+        json.dump(result, fw, indent=4, sort_keys=True)
 
     return save_path
 

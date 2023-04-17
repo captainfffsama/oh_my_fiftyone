@@ -99,7 +99,26 @@ def add_data2exsist_dataset():
                 default="merge"
             )
 
-            import_new_sample2exist_dataset(dataset, text,t3)
+            if "merge" == t3:
+                def validat_number(input):
+                    try:
+                        n=float(input)
+                    except Exception as e:
+                        return False
+                    return 0<=n<=1
+
+                v2 = Validator.from_callable(validat_number,
+                                                error_message="瞎写啥")
+                iou_thr = prompt_session.prompt(
+                    "请设置合并的IOU阈值,范围在[0,1]:",
+                    validator=v2,
+                    default="0.7"
+                )
+                iou_thr=float(iou_thr)
+            else:
+                iou_thr=0.7
+
+            import_new_sample2exist_dataset(dataset, text,t3,iou_thr)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:

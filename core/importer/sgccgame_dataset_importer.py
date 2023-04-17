@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-23 09:48:44
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-21 13:19:55
+@LastEditTime: 2023-04-17 18:26:54
 @FilePath: /dataset_manager/core/importer/sgccgame_dataset_importer.py
 @Description:
 '''
@@ -155,12 +155,12 @@ def parse_sample_info(
     with open(anno_path, 'r') as fr:
         anno = json.load(fr)
     anno_dict["chiebot_ID"] = anno.get("ID", "game_" + md5sum(img_path))
-    data_source = anno.get("data_source", None)
+    data_source = anno.get("data_source","Unknow")
     data_source = [data_source] if isinstance(data_source,
                                               str) else data_source
     anno_dict["data_source"] = data_source
     anno_dict["img_quality"] = int(anno.get("img_quality", 0))
-    anno_dict["additions"] = anno.get("additions", None)
+    anno_dict["additions"] = anno.get("additions", {})
     anno_dict["tags"] = anno.get("sample_tags", [])
     anno_dict["chiebot_sample_tags"]=anno.get("chiebot_sample_tags",[])
 
