@@ -9,97 +9,20 @@
 """
 from typing import Optional
 
-import base64
 import os
-import json
 from concurrent import futures
-import shutil
 
-import numpy as np
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 from fiftyone.utils.coco import COCODetectionDatasetExporter
 from fiftyone.utils.yolo import YOLOv4DatasetExporter,YOLOv5DatasetExporter
 
-from core.utils import get_sample_field, md5sum, get_all_file_path
-from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
+from core.utils import _export_one_sample_anno,_export_one_sample
+from core.exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
 from .common_tools import print_time_deco
-
-
-def _export_one_sample_anno(sample, save_dir, backup_dir=None):
-    result = {}
-    need_export_map = {
-        "data_source": "data_source",
-        "img_quality": "img_quality",
-        "additions": "additions",
-        "tags": "sample_tags",
-        "chiebot_ID": "ID",
-    }
-
-    for k, v in need_export_map.items():
-        vv = get_sample_field(sample, k)
-        if vv:
-            result[v] = vv
-
-    result["chiebot_sample_tags"] = get_sample_field(sample,
-                                                     "chiebot_sample_tags",
-                                                     default=[])
-
-    result["img_shape"] = (
-        sample["metadata"].height,
-        sample["metadata"].width,
-        sample["metadata"].num_channels,
-    )
-    result["objs_info"] = []
-    dets = get_sample_field(sample, "ground_truth")
-    if dets:
-        for det in dets.detections:
-            obj = {}
-            obj["name"] = det.label
-            obj["pose"] = "Unspecified"
-            obj["truncated"] = 0
-            obj["difficult"] = 0
-            obj["mask"] = []
-            obj["confidence"] = -1
-            obj["quality"] = 10
-            obj["bbox"] = (
-                det.bounding_box[0],
-                det.bounding_box[1],
-                det.bounding_box[0] + det.bounding_box[2],
-                det.bounding_box[1] + det.bounding_box[3],
-            )
-
-            result["objs_info"].append(obj)
-
-    embedding: Optional[np.ndarray] = get_sample_field(sample, "embedding",
-                                                       None)
-
-    if embedding is not None:
-        result["embedding"] = base64.b64encode(
-            embedding.tobytes()).decode("utf-8")
-
-    save_path = os.path.join(save_dir,
-                             os.path.splitext(sample.filename)[0] + ".anno")
-
-    if backup_dir is not None:
-        ori_anno = os.path.splitext(sample.filepath)[0] + ".anno"
-        if os.path.exists(ori_anno):
-            shutil.copy(
-                ori_anno,
-                os.path.join(backup_dir,
-                             os.path.splitext(sample.filename)[0] + ".anno"))
-
-    try:
-        with open(save_path, "w") as fw:
-            json.dump(result, fw, indent=4, sort_keys=True)
-    except Exception as e:
-        breakpoint()
-        raise e
-
-    return save_path
 
 
 @print_time_deco
@@ -140,20 +63,6 @@ def export_anno_file(
                 save_path = task.result()
 
 
-def _export_one_sample(sample, exporter, get_anno, save_dir):
-    image_path = sample.filepath
-
-    metadata = sample.metadata
-    if exporter.requires_image_metadata and metadata is None:
-        metadata = fo.ImageMetadata.build_for(image_path)
-
-    # Assumes single label field case
-    label = sample["ground_truth"]
-
-    exporter.export_sample(image_path, label, metadata=metadata)
-
-    if get_anno:
-        _export_one_sample_anno(sample, save_dir)
 
 FORMAT_CLASS_MAP={
     "voc": SGCCGameDatasetExporter,

@@ -65,7 +65,7 @@ def add_data2exsist_dataset():
     if exist_dataset:
         valida = Validator.from_callable(lambda x: x in exist_dataset,
                                          error_message="没有这个数据集")
-        t1 = prompt_session.prompt(
+        import_dataset_name = prompt_session.prompt(
             "请输入要导入的数据集名称:",
             validator=valida,
             completer=WordCompleter(exist_dataset),
@@ -79,7 +79,7 @@ def add_data2exsist_dataset():
             validator=valida1,
             completer=WordCompleter(["y", "n"]),
         )
-        dataset = fo.load_dataset(t1)
+        dataset = fo.load_dataset(import_dataset_name)
         if t2 == "n":
             with timeblock():
                 new_dataset = generate_dataset(text, persistent=False)
@@ -89,7 +89,17 @@ def add_data2exsist_dataset():
             dataset.save()
             print("dataset merge done")
         else:
-            import_new_sample2exist_dataset(dataset, text)
+            flag_map={"overlap":"覆盖","merge":"合并"}
+            v1 = Validator.from_callable(lambda x: x in flag_map.keys(),
+                                            error_message="瞎选什么啊")
+            t3 = prompt_session.prompt(
+                "相同样本是覆盖(overlap)还是合并(merge):",
+                validator=v1,
+                completer=WordCompleter(flag_map.keys()),
+                default="merge"
+            )
+
+            import_new_sample2exist_dataset(dataset, text,t3)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:

@@ -1,14 +1,16 @@
 import base64
 import hashlib
-from typing import Tuple,Union,Dict,List
+from typing import Tuple,Union,Dict,List,Optional
 import time
 from contextlib import contextmanager
 import os
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-
+import json
+import shutil
 
 import cv2
+import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 from PIL import Image
@@ -285,3 +287,91 @@ def fol_det_nms(labels:Union[List[fol.Detection],fol.Detections],iou_thr=0.5,sor
 
     return fol.Detections(detections=r)
 
+
+def _export_one_sample_anno(sample, save_dir, backup_dir=None):
+    result = {}
+    need_export_map = {
+        "data_source": "data_source",
+        "img_quality": "img_quality",
+        "additions": "additions",
+        "tags": "sample_tags",
+        "chiebot_ID": "ID",
+    }
+
+    for k, v in need_export_map.items():
+        vv = get_sample_field(sample, k)
+        if vv:
+            result[v] = vv
+
+    result["chiebot_sample_tags"] = get_sample_field(sample,
+                                                     "chiebot_sample_tags",
+                                                     default=[])
+
+    result["img_shape"] = (
+        sample["metadata"].height,
+        sample["metadata"].width,
+        sample["metadata"].num_channels,
+    )
+    result["objs_info"] = []
+    dets = get_sample_field(sample, "ground_truth")
+    if dets:
+        for det in dets.detections:
+            obj = {}
+            obj["name"] = det.label
+            obj["pose"] = "Unspecified"
+            obj["truncated"] = 0
+            obj["difficult"] = 0
+            obj["mask"] = []
+            obj["confidence"] = -1
+            obj["quality"] = 10
+            obj["bbox"] = (
+                det.bounding_box[0],
+                det.bounding_box[1],
+                det.bounding_box[0] + det.bounding_box[2],
+                det.bounding_box[1] + det.bounding_box[3],
+            )
+
+            result["objs_info"].append(obj)
+
+    embedding: Optional[np.ndarray] = get_sample_field(sample, "embedding",
+                                                       None)
+
+    if embedding is not None:
+        result["embedding"] = base64.b64encode(
+            embedding.tobytes()).decode("utf-8")
+
+    save_path = os.path.join(save_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno")
+
+    if backup_dir is not None:
+        ori_anno = os.path.splitext(sample.filepath)[0] + ".anno"
+        if os.path.exists(ori_anno):
+            shutil.copy(
+                ori_anno,
+                os.path.join(backup_dir,
+                             os.path.splitext(sample.filename)[0] + ".anno"))
+
+    try:
+        with open(save_path, "w") as fw:
+            json.dump(result, fw, indent=4, sort_keys=True)
+    except Exception as e:
+        breakpoint()
+        raise e
+
+    return save_path
+
+
+def _export_one_sample(sample, exporter, get_anno:bool, save_dir):
+    image_path = sample.filepath
+
+    metadata = sample.metadata
+    if exporter.requires_image_metadata and metadata is None:
+        metadata = fo.ImageMetadata.build_for(image_path)
+
+    # Assumes single label field case
+    label = sample["ground_truth"]
+
+    exporter.export_sample(image_path, label, metadata=metadata)
+
+    if get_anno:
+        _export_one_sample_anno(sample, save_dir)

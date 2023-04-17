@@ -20,9 +20,11 @@ from tqdm import tqdm
 
 import fiftyone as fo
 from core.importer import SGCCGameDatasetImporter, generate_sgcc_sample
-from core.utils import get_all_file_path, timeblock
+from core.exporter import SGCCGameDatasetExporter
+from core.utils import get_all_file_path, timeblock,fol_det_nms,_export_one_sample
 from core.logging import logging, logging_path
 from core.tools import update_dataset,add_dataset_fields_by_txt,imgslist2dataview
+
 
 SAMPLE_MAX_CACHE = 60000
 
@@ -98,6 +100,22 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
         print("same error happened in import,please check {}".format(logging_path))
     return dataset
 
+def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter):
+    if "overlap" == flag or not os.path.exists(os.path.join(dst_dir,os.path.basename(img_path))):
+        return _copy_sample(img_path,dst_dir)
+    else:
+        need_import_sample=generate_sgcc_sample(img_path)
+        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
+
+        ni_s_label=need_import_sample.ground_truth.detections if need_import_sample.has_field("ground_truth") else []
+        e_s_label=exist_sample.ground_truth.detections if exist_sample.has_field("ground_truth") else []
+
+        e_s_label.extend(ni_s_label)
+
+        final_label=fol_det_nms(e_s_label,iou_thr=0.7)
+        exist_sample.ground_truth=final_label
+        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+
 def _copy_sample(img_path,dst_dir) -> str:
     xml_path=os.path.splitext(img_path)[0]+".xml"
     anno_path=os.path.splitext(img_path)[0]+".anno"
@@ -110,7 +128,7 @@ def _copy_sample(img_path,dst_dir) -> str:
 
     return os.path.join(dst_dir,os.path.basename(img_path))
 
-def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str):
+def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str,same_sample_deal:str):
     imgs_path = get_all_file_path(
             new_samples_path,
             filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
@@ -119,15 +137,18 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     dst_dir=exist_dataset.info.get("dataset_dir",os.path.split(exist_dataset.first().filepath)[0])
 
     new_imgs_path=[]
-    with futures.ThreadPoolExecutor(32) as exec:
-        tasks=[exec.submit(_copy_sample,img_path,dst_dir) for img_path in imgs_path]
-        for task in tqdm(futures.as_completed(tasks),
-                total=len(imgs_path),
-                desc="样本拷贝进度:",
-                dynamic_ncols=True,
-                colour="green",
-            ):
-            new_imgs_path.append(task.result())
+
+    exporter = SGCCGameDatasetExporter(export_dir=dst_dir)
+    with exporter:
+        with futures.ThreadPoolExecutor(32) as exec:
+            tasks=[exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter) for img_path in imgs_path]
+            for task in tqdm(futures.as_completed(tasks),
+                    total=len(imgs_path),
+                    desc="样本拷贝进度:",
+                    dynamic_ncols=True,
+                    colour="green",
+                ):
+                new_imgs_path.append(task.result())
 
     update_dataset(exist_dataset,update_imgs_asbase=True,sample_path_list=new_imgs_path)
 
