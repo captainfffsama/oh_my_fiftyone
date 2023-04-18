@@ -1,5 +1,7 @@
 [中文](./readme.md)   [English](./readme_EN.md)
 
+[toc]
+
 # Introduction
 
 基于 fiftyone 写的一个管理数据的小东西
@@ -18,9 +20,20 @@
 # 需要注意的设定字段
 ## 数据集字段和样本字段
 - `embedding`: 存放着样本嵌入
+- `ground_truth`: 存放样本标注
+- `model_predict`: 存放模型预测结果
+- `chiebot_ID`: 比赛样本原始ID
+- `xml_md5`: 当前样本的xml md5
+- `img_quality`: 样本图片质量,暂未用上
+- `data_source`: 样本数据来源
+- `chiebot_sample_tags`: 类似sample tags,用来标志样本
+- `additions`: 其他一些奇奇怪怪的信息
 
 ## brain_key
 - `im_sim_qdrant`: 存放着使用 qdrant 计算数据的相似性
+
+# 使用说明
+参见[使用说明](./doc/user_guide.md)
 
 
 # TODO
