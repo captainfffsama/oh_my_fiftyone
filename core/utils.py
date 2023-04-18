@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import json
 import shutil
+from datetime import datetime
 
 import cv2
 import fiftyone as fo
@@ -379,3 +380,8 @@ def _export_one_sample(sample, exporter, get_anno:bool, save_dir,export_classes:
 
     if get_anno:
         _export_one_sample_anno(sample, save_dir)
+
+
+def return_now_time():
+    now_time=datetime.now()
+    return "{}_{}_{}_{}_{}_{}".format(now_time.year,now_time.month,now_time.day,now_time.hour,now_time.minute,now_time.second)
