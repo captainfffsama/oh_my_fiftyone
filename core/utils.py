@@ -357,7 +357,7 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
     return save_path
 
 
-def _export_one_sample(sample, exporter, get_anno:bool, save_dir):
+def _export_one_sample(sample, exporter, get_anno:bool, save_dir,export_classes:Optional[list]=None):
     image_path = sample.filepath
 
     metadata = sample.metadata
@@ -365,7 +365,15 @@ def _export_one_sample(sample, exporter, get_anno:bool, save_dir):
         metadata = fo.ImageMetadata.build_for(image_path)
 
     # Assumes single label field case
-    label = sample["ground_truth"]
+    if export_classes is None:
+        label = sample["ground_truth"]
+    else:
+        label=[]
+        for obj in sample["ground_truth"].detections:
+            if obj.label in export_classes:
+                label.append(obj)
+
+        label=fol.Detections(detections=label)
 
     exporter.export_sample(image_path, label, metadata=metadata)
 

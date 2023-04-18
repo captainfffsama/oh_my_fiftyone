@@ -7,7 +7,7 @@
 @FilePath: /dataset_manager/core/tools/exporter.py
 @Description:
 """
-from typing import Optional
+from typing import Optional,List
 
 import os
 from concurrent import futures
@@ -76,6 +76,7 @@ def export_sample(save_dir: str,
                   dataset: Optional[focd.Dataset] = None,
                   get_anno=True,
                   format:str="voc",
+                  export_class:Optional[List[str]]=None,
                   **kwargs):
     """导出样本的媒体文件,标签文件和anno文件
 
@@ -84,6 +85,7 @@ def export_sample(save_dir: str,
         dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
         get_anno (bool, optional): 是否导出anno. Defaults to True.
         format (str,optional): 导出格式,必须是 "voc","coco","yolov4","yolov5"之一,默认voc
+        export_class (List[str],optinal): 默认为None,导出所有标签.若传入列表等可迭代对象,就仅导出指定的标签
         **kwargs: 支持``SGCCGameDatasetExporter`` 的参数
     """
     if format not in FORMAT_CLASS_MAP.keys():
@@ -106,7 +108,7 @@ def export_sample(save_dir: str,
         with futures.ThreadPoolExecutor(48) as exec:
             tasks = [
                 exec.submit(_export_one_sample, sample, exporter, get_anno,
-                            save_dir) for sample in dataset
+                            save_dir,export_class) for sample in dataset
             ]
             with fo.ProgressBar(total=len(dataset),
                                 start_msg="样本导出进度:",
