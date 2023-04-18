@@ -43,6 +43,9 @@ def preprocess_one(
 
     if convert2jpg:
         img = cv2.imread(img_path, cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
+        if img is None:
+            print("ERROR!{} is broken".format(img_path))
+            return img_path, None
         if (
             img_ext in (".jpg", ".jpeg", ".JPG", ".JPEG")
             and len(img.shape) == 3
@@ -106,7 +109,8 @@ def preprocess(
             futures.as_completed(tasks), total=len(imgs_path), desc="预处理进度:"
         ):
             img_path, new_path = task.result()
-            result.append(img_path + " => " + new_path + "\n")
+            if img_path and new_path:
+                result.append(img_path + " => " + new_path + "\n")
 
     with open(os.path.join(save_dir, "convertlog.log"), "w") as fw:
         fw.writelines(result)
