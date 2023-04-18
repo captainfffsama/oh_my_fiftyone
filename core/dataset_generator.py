@@ -19,6 +19,7 @@ from prompt_toolkit.shortcuts import ProgressBar
 from tqdm import tqdm
 
 import fiftyone as fo
+import fiftyone.core.labels as fol
 from core.importer import SGCCGameDatasetImporter, generate_sgcc_sample
 from core.exporter import SGCCGameDatasetExporter
 from core.utils import get_all_file_path, timeblock,fol_det_nms,_export_one_sample
@@ -122,7 +123,7 @@ def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,impor
 
         final_label.extend(ni_s_label)
 
-        exist_sample.ground_truth=final_label
+        exist_sample.ground_truth=fol.Detections(detections=final_label)
         _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
 
         return os.path.join(dst_dir,os.path.basename(img_path))

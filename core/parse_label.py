@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-04-14 14:18:20
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-04-18 10:45:09
+@LastEditTime: 2023-04-18 14:15:20
 @FilePath: /dataset_manager/core/parse_label.py
 @Description:
 '''
@@ -55,6 +55,9 @@ def _get_yolo_args(label_dir):
     if os.path.exists(os.path.join(label_dir,"obj.names")):
         with open(os.path.join(label_dir,"obj.names"),"r") as fr:
             classes=[x.strip() for x in fr.readlines()]
+        imagetxt=os.path.join(label_dir,"images.txt")
+        if imagetxt in txts:
+            txts.remove(imagetxt)
         return {"txt_list":txts,"classes":classes}
     elif os.path.exists(os.path.join(label_dir,"dataset.yaml")):
         with open(os.path.join(label_dir,"dataset.yaml"), 'r') as fr:
@@ -115,8 +118,8 @@ def _parse_coco(anno_json,exclude_classes) -> Dict[str,list]:
 
             img_wh=(img_ids_map[coco_id]["width"],img_ids_map[coco_id]["height"])
             labels=[x.to_detection(img_wh,classes=classes) for x in coco_anno_obj]
-            labels_final=[x for x in labels if x.label not in labels]
-            result[img_name]=labels
+            labels_final=[x for x in labels if x.label not in exclude_classes]
+            result[img_name]=labels_final
     return result
 
 
@@ -145,4 +148,6 @@ def parser_labels(label_dir,exclude_class=None,label_type=None) -> Dict[str,List
     if exclude_class is None:
         exclude_class=set([])
 
-    return PARSER_MAP[label_type](**label_args,exclude_class=exclude_class)
+    print("{}开始解析".format(label_dir))
+
+    return PARSER_MAP[label_type](**label_args,exclude_classes=exclude_class)

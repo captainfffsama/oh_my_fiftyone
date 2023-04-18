@@ -14,8 +14,9 @@ import fiftyone.core.dataset as focd
 import fiftyone.brain as fob
 from fiftyone import ViewField as F
 from fiftyone.utils.coco import COCODetectionDatasetExporter
-from fiftyone.utils.yolo import YOLOv4DatasetExporter,YOLOv5DatasetExporter
+from fiftyone.utils.yolo import YOLOv4DatasetExporter, YOLOv5DatasetExporter
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
+
 
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
@@ -24,7 +25,8 @@ from prompt_toolkit.shortcuts import yes_no_dialog
 from prompt_toolkit.validation import Validator
 from prompt_toolkit import print_formatted_text, HTML
 
-from core.utils import timeblock,fol_det_nms
+from core.utils import timeblock, fol_det_nms
+from core import __version__
 import core.tools as T
 from core.cache import WEAK_CACHE
 from core.data_preprocess import preprocess
@@ -90,50 +92,52 @@ def add_data2exsist_dataset():
             dataset.save()
             print("dataset merge done")
         else:
-            flag_map={"overlap":"覆盖","merge":"合并"}
+            flag_map = {"overlap": "覆盖", "merge": "合并"}
             v1 = Validator.from_callable(lambda x: x in flag_map.keys(),
-                                            error_message="瞎选什么啊")
-            t3 = prompt_session.prompt(
-                "相同样本是覆盖(overlap)还是合并(merge):",
-                validator=v1,
-                completer=WordCompleter(flag_map.keys()),
-                default="merge"
-            )
+                                         error_message="瞎选什么啊")
+            t3 = prompt_session.prompt("相同样本是覆盖(overlap)还是合并(merge):",
+                                       validator=v1,
+                                       completer=WordCompleter(
+                                           flag_map.keys()),
+                                       default="merge")
 
             if "merge" == t3:
+
                 def validat_number(input):
                     try:
-                        n=float(input)
+                        n = float(input)
                     except Exception as e:
                         return False
-                    return 0<=n<=1
+                    return 0 <= n <= 1
 
                 v2 = Validator.from_callable(validat_number,
-                                                error_message="瞎写啥")
-                iou_thr = prompt_session.prompt(
-                    "请设置合并的IOU阈值,范围在[0,1]:",
-                    validator=v2,
-                    default="0.7"
-                )
-                iou_thr=float(iou_thr)
-                import_data_cls=set([])
+                                             error_message="瞎写啥")
+                iou_thr = prompt_session.prompt("请设置合并的IOU阈值,范围在[0,1]:",
+                                                validator=v2,
+                                                default="0.7")
+                iou_thr = float(iou_thr)
+                import_data_cls = set([])
             else:
-                iou_thr=0.7
-                ok_flag=False
-                import_data_cls=set([])
+                iou_thr = 0.7
+                ok_flag = False
+                import_data_cls = set([])
                 while not ok_flag:
-                    import_data_cls_str:str= prompt_session.prompt(
+                    import_data_cls_str: str =prompt(
                         """请输入导入样本包含的类别,\",\"分隔,Enter确认终止输入,
-                        若为空,则相同样本的导入类别以标签文件中有的类别为主:""",
-                    )
-                    import_data_cls=set([x for x in import_data_cls_str.strip().split(",") if x])
-                    ok_flag = yes_no_dialog(title="确认导入样本类别",
-                                    text="导入样本类别有:".format(",".join(import_data_cls))).run()
+若为空,则相同样本的导入类别以标签文件中有的类别为主:""", )
+                    print(import_data_cls_str.strip().split(","))
+                    import_data_cls = set([
+                        x for x in import_data_cls_str.strip().split(",") if x
+                    ])
+                    ok_flag = yes_no_dialog(
+                        title="确认导入样本类别",
+                        text="导入样本类别有:{}".format(",".join(import_data_cls))).run()
 
                     if ok_flag:
                         break
 
-            import_new_sample2exist_dataset(dataset, text,t3,iou_thr,import_data_cls)
+            import_new_sample2exist_dataset(dataset, text, t3, iou_thr,
+                                            import_data_cls)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:
@@ -302,69 +306,66 @@ def merge_label():
 
     labels_part_dir = os.path.abspath(labels_part_dir)
 
-    save_dir= prompt_session.prompt("合并结果的保存目录:",
-                                    completer=PathCompleter(),
-                                    complete_in_thread=True,
-                                    validator=None)
-    save_dir= os.path.abspath(save_dir)
-    valida = Validator.from_callable(lambda x: x in ("voc", "coco", "yolov4","yolov5"),
+    save_dir = prompt_session.prompt("合并结果的保存目录:",
+                                     completer=PathCompleter(),
+                                     complete_in_thread=True,
+                                     validator=None)
+    save_dir = os.path.abspath(save_dir)
+    valida = Validator.from_callable(lambda x: x in
+                                     ("voc", "coco", "yolov4", "yolov5"),
                                      error_message="瞎选什么啊")
-    type_c = WordCompleter(["voc", "coco", "yolov4","yolov5"])
-    save_label_type= prompt("合并结果的标签格式:",
-                           completer=type_c,
-                           validator=valida,
-                           default="voc")
+    type_c = WordCompleter(["voc", "coco", "yolov4", "yolov5"])
+    save_label_type = prompt("合并结果的标签格式:",
+                             completer=type_c,
+                             validator=valida,
+                             default="voc")
 
+    img_path_dict = {}
+    label_dict = defaultdict(list)
 
-    img_path_dict={}
-    label_dict=defaultdict(list)
-
-    cfg_path=os.path.join(labels_part_dir,"cfg.json")
+    cfg_path = os.path.join(labels_part_dir, "cfg.json")
     if os.path.exists(cfg_path):
-        with open(cfg_path,"r") as fr:
-            dir_cls_info=json.load(fr)
+        with open(cfg_path, "r") as fr:
+            dir_cls_info = json.load(fr)
     else:
-        dir_cls_info={}
+        dir_cls_info = {}
 
-
-    all_cls=set([])
+    all_cls = set([])
     for v in dir_cls_info.values():
         for vv in v:
             all_cls.add(vv)
 
-    excluded_cls=defaultdict(set)
-    for k,v in dir_cls_info.items():
-        excluded_cls[k]=all_cls-set(v)
+    excluded_cls = defaultdict(set)
+    for k, v in dir_cls_info.items():
+        excluded_cls[k] = all_cls - set(v)
 
     for folder in os.listdir(labels_part_dir):
-        i=os.path.join(labels_part_dir,folder)
+        i = os.path.join(labels_part_dir, folder)
         if os.path.isdir(i):
-            dir_excluded_cls=excluded_cls.get(folder,set([]))
-            result=parser_labels(i,dir_excluded_cls)
+            dir_excluded_cls = excluded_cls.get(folder, set([]))
+            result = parser_labels(i, dir_excluded_cls)
             if result is not None:
-                for k,v in result.items():
+                for k, v in result.items():
                     label_dict[k].extend(v)
-                    img_path_dict[k]=os.path.join(i,k+".jpg")
+                    img_path_dict[k] = os.path.join(i, k + ".jpg")
 
-    FORMAT_CLASS_MAP={
+    FORMAT_CLASS_MAP = {
         "voc": SGCCGameDatasetExporter,
         "coco": COCODetectionDatasetExporter,
         "yolov4": YOLOv4DatasetExporter,
         "yolov5": YOLOv5DatasetExporter,
     }
 
-
-    exporter =FORMAT_CLASS_MAP[save_label_type](export_dir=save_dir,)
+    exporter = FORMAT_CLASS_MAP[save_label_type](export_dir=save_dir, )
     with exporter:
-        with fo.ProgressBar(
-                total=len(label_dict.keys()), start_msg="标签文件合并进度:", complete_msg="合并完毕"
-            ) as pb:
-            for k,v in pb(label_dict.items()):
-                objs=fol_det_nms(v,iou_thr=0.7)
-                img_path=img_path_dict[k]
-                metadata=fo.ImageMetadata.build_for(img_path)
-                exporter.export_sample(img_path,objs, metadata=metadata)
-
+        with fo.ProgressBar(total=len(label_dict.keys()),
+                            start_msg="标签文件合并进度:",
+                            complete_msg="合并完毕") as pb:
+            for k, v in pb(label_dict.items()):
+                objs = fol_det_nms(v, iou_thr=0.7)
+                img_path = img_path_dict[k]
+                metadata = fo.ImageMetadata.build_for(img_path)
+                exporter.export_sample(img_path, objs, metadata=metadata)
 
 
 @pidfile(pidname="dataset_manager")
@@ -402,6 +403,7 @@ def main():
 ⠀⠀⠀⠈⠻⢧⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠐⣻⠿⠋⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠉⠓⠶⣤⣄⣀⡀⠀⠀⠀⠀⠀⢀⣀⣠⡴⠖⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀
 
+              当前版本:{}
             你想对数据集做些什么？
 1. 添加新的数据到已有数据集   6. 合并标注
 2. 查看已有数据集
@@ -409,7 +411,7 @@ def main():
 4. 删除已有数据集
 5. 处理数据
 ===========================================
-        请输入要做事情的编号:""")
+        请输入要做事情的编号:""".format(__version__))
 
         main_win_select = prompt_session.prompt(
             main_win_show,
