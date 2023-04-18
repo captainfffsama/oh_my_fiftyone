@@ -116,10 +116,24 @@ def add_data2exsist_dataset():
                     default="0.7"
                 )
                 iou_thr=float(iou_thr)
+                import_data_cls=set([])
             else:
                 iou_thr=0.7
+                ok_flag=False
+                import_data_cls=set([])
+                while not ok_flag:
+                    import_data_cls_str:str= prompt_session.prompt(
+                        """请输入导入样本包含的类别,\",\"分隔,Enter确认终止输入,
+                        若为空,则相同样本的导入类别以标签文件中有的类别为主:""",
+                    )
+                    import_data_cls=set([x for x in import_data_cls_str.strip().split(",") if x])
+                    ok_flag = yes_no_dialog(title="确认导入样本类别",
+                                    text="导入样本类别有:".format(",".join(import_data_cls))).run()
 
-            import_new_sample2exist_dataset(dataset, text,t3,iou_thr)
+                    if ok_flag:
+                        break
+
+            import_new_sample2exist_dataset(dataset, text,t3,iou_thr,import_data_cls)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:

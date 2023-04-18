@@ -100,9 +100,32 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
         print("same error happened in import,please check {}".format(logging_path))
     return dataset
 
-def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr):
-    if "overlap" == flag or not os.path.exists(os.path.join(dst_dir,os.path.basename(img_path))):
+def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,import_data_cls):
+    if not os.path.exists(os.path.join(dst_dir,os.path.basename(img_path))):
         return _copy_sample(img_path,dst_dir)
+    if "overlap" == flag:
+        need_import_sample=generate_sgcc_sample(img_path)
+        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
+
+        ni_s_label= need_import_sample.ground_truth.detections if need_import_sample.has_field("ground_truth") else []
+        e_s_label=exist_sample.ground_truth.detections if exist_sample.has_field("ground_truth") else []
+
+        if len(import_data_cls):
+            ni_all_classes=set(import_data_cls)
+        else:
+            ni_all_classes=set([x.label for x in ni_s_label])
+
+        final_label=[]
+        for idx,i in enumerate(e_s_label):
+            if i.label not in ni_all_classes:
+                final_label.append(i)
+
+        final_label.extend(ni_s_label)
+
+        exist_sample.ground_truth=final_label
+        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+
+        return os.path.join(dst_dir,os.path.basename(img_path))
     else:
         need_import_sample=generate_sgcc_sample(img_path)
         exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
@@ -136,7 +159,7 @@ def _copy_sample(img_path,dst_dir) -> str:
 
     return os.path.join(dst_dir,os.path.basename(img_path))
 
-def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str,same_sample_deal:str,merge_iou_thr=0.7):
+def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str,same_sample_deal:str,merge_iou_thr=0.7,import_data_cls=[]):
     imgs_path = get_all_file_path(
             new_samples_path,
             filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
@@ -149,7 +172,7 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     exporter = SGCCGameDatasetExporter(export_dir=dst_dir)
     with exporter:
         with futures.ThreadPoolExecutor(32) as exec:
-            tasks=[exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr) for img_path in imgs_path]
+            tasks=[exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr,import_data_cls) for img_path in imgs_path]
             for task in tqdm(futures.as_completed(tasks),
                     total=len(imgs_path),
                     desc="样本拷贝合并进度:",
