@@ -4,6 +4,7 @@ from typing import Callable, Optional, Protocol
 import time
 from datetime import datetime
 from collections import defaultdict
+import json
 
 from pid.decorator import pidfile
 from IPython import embed
@@ -304,10 +305,28 @@ def merge_label():
     img_path_dict={}
     label_dict=defaultdict(list)
 
+    cfg_path=os.path.join(labels_part_dir,"cfg.json")
+    if os.path.exists(cfg_path):
+        with open(cfg_path,"r") as fr:
+            dir_cls_info=json.load(fr)
+    else:
+        dir_cls_info={}
+
+
+    all_cls=set([])
+    for v in dir_cls_info.values():
+        for vv in v:
+            all_cls.add(vv)
+
+    excluded_cls=defaultdict(set)
+    for k,v in dir_cls_info.items():
+        excluded_cls[k]=all_cls-set(v)
+
     for folder in os.listdir(labels_part_dir):
         i=os.path.join(labels_part_dir,folder)
         if os.path.isdir(i):
-            result=parser_labels(i)
+            dir_excluded_cls=excluded_cls.get(folder,set([]))
+            result=parser_labels(i,dir_excluded_cls)
             if result is not None:
                 for k,v in result.items():
                     label_dict[k].extend(v)
