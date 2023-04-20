@@ -173,6 +173,18 @@ def _copy_sample(img_path,dst_dir) -> str:
     return os.path.join(dst_dir,os.path.basename(img_path))
 
 def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str,same_sample_deal:str,merge_iou_thr=0.7,import_data_cls=()):
+    extra_attr_cfg_file = get_all_file_path(new_samples_path, filter_=(".annocfg",))
+
+    extra_attr = {}
+    if extra_attr_cfg_file:
+        if os.path.exists(extra_attr_cfg_file[0]):
+            try:
+                with open(extra_attr_cfg_file[0], "r") as fr:
+                    extra_attr = json.load(fr)
+            except json.JSONDecodeError as e:
+                print("{} 不是json标准格式,报错信息如下:{}".format(extra_attr_cfg_file[0],e.msg))
+                return
+
     imgs_path = get_all_file_path(
             new_samples_path,
             filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
@@ -200,13 +212,6 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
 
     update_dataset(exist_dataset,update_imgs_asbase=True,sample_path_list=new_imgs_path)
 
-    extra_attr_cfg_file = get_all_file_path(new_samples_path, filter_=(".annocfg",))
-
-    extra_attr = {}
-    if extra_attr_cfg_file:
-        if os.path.exists(extra_attr_cfg_file[0]):
-            with open(extra_attr_cfg_file[0], "r") as fr:
-                extra_attr = json.load(fr)
 
     if extra_attr:
         add_dataset_fields_by_txt(new_imgs_path,extra_attr,exist_dataset)
