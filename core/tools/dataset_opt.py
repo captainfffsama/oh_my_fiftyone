@@ -10,8 +10,11 @@
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit.validation import Validator
+import qdrant_client as qc
+from qdrant_client.models import PointIdsList
 
-from typing import Optional, Union, List, Callable
+import ipdb
+from typing import Optional, Union, List, Callable, Tuple, Sequence, Iterable
 from pprint import pprint
 from datetime import datetime
 from copy import deepcopy
@@ -244,20 +247,40 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
             return
         else:
             dataset = s.dataset
-    dataset.delete_brain_run(brain_key)
+    if brain_key in dataset.list_brain_runs():
+        previous_brain_run = dataset.load_brain_results(brain_key)
+        previous_brain_run.cleanup()
+        # if isinstance(previous_brain_run,
+        #               fob.internal.core.qdrant.QdrantSimilarityIndex):
+        #     collections_name = [
+        #         i.name for i in
+        #         previous_brain_run.client.get_collections().collections
+        #     ]
+        #     print("将清除所有qdrant collection")
+        #     for i in collections_name:
+        #         previous_brain_run.client.delete_collection(i)
+        dataset.delete_brain_run(brain_key)
+    if isinstance(dataset, focd.Dataset):
+        qdrant_collection_name = dataset.name + "_sim"
+    else:
+        qdrant_collection_name = dataset.dataset_name + "_sim"
     result = fob.compute_similarity(dataset,
                                     embeddings="embedding",
                                     backend="qdrant",
                                     brain_key=brain_key,
+                                    metric="cosine",
+                                    collection_name=qdrant_collection_name,
                                     **kwargs)
+    s.refresh()
     return result
 
 
 # @print_time_deco
-def duplicate_detV1(dataset: Optional[focd.Dataset] = None,
-                    similar_thr: Optional[float] = None,
-                    similar_fraction: Optional[float] = None):
+def duplicate_detV1_deprecated(dataset: Optional[focd.Dataset] = None,
+                               similar_thr: Optional[float] = None,
+                               similar_fraction: Optional[float] = None):
     assert similar_thr is not None or similar_fraction is not None, "similar_r and similar_fraction can not be None both!"
+    print("this method will deprecated")
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
         if s is None:
@@ -359,11 +382,11 @@ PAIRWISE_METHOD_MAP = {
 
 
 @print_time_deco
-def duplicate_det(dataset: Optional[focd.Dataset] = None,
-                  similar_thr: float = 0.995,
-                  check_thr: float = 0.985,
-                  similar_method: Union[str, Callable] = "cosine",
-                  import_dataset: Optional[focd.Dataset] = None):
+def duplicate_detV2_deprecated(dataset: Optional[focd.Dataset] = None,
+                               similar_thr: float = 0.995,
+                               check_thr: float = 0.985,
+                               similar_method: Union[str, Callable] = "cosine",
+                               import_dataset: Optional[focd.Dataset] = None):
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
         if s is None:
@@ -390,8 +413,9 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
                                      error_message="瞎选什么啊")
     print("start dup det")
 
-    with fo.ProgressBar(total=len(key_imgs_id), start_msg="样本检查重复进度:",
-                                complete_msg="样本重复检查完毕") as pb:
+    with fo.ProgressBar(total=len(key_imgs_id),
+                        start_msg="样本检查重复进度:",
+                        complete_msg="样本重复检查完毕") as pb:
         try:
             while True:
 
@@ -413,23 +437,23 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
                         feat_cache.append(dataset[current_query]["embedding"])
                         count_t += 1
                         if count_t == MAX_SIZE:
-                            pw_matrix = pairwise_distances(np.expand_dims(
-                                current_key_feat, 0),
-                                                        np.array(feat_cache),
-                                                        metric=similar_method,
-                                                        n_jobs=-1)
+                            pw_matrix = pairwise_distances(
+                                np.expand_dims(current_key_feat, 0),
+                                np.array(feat_cache),
+                                metric=similar_method,
+                                n_jobs=-1)
                             if "cosine" == similar_method:
                                 is_dup_idx = np.where(pw_matrix >= similar_thr)
                                 need_check_idx = np.where(
                                     np.logical_and(pw_matrix >= check_thr,
-                                                pw_matrix < similar_thr))
+                                                   pw_matrix < similar_thr))
                             else:
                                 is_dup_idx = np.where(pw_matrix <= similar_thr)
                                 need_check_idx = np.where(
                                     np.logical_and(pw_matrix <= check_thr,
-                                                pw_matrix > similar_thr))
+                                                   pw_matrix > similar_thr))
 
-                            dup_ids=[]
+                            dup_ids = []
                             for i in is_dup_idx[-1]:
                                 dup_ids.append(id_cache[i])
                                 query_imgs_id.remove(id_cache[i])
@@ -446,21 +470,21 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
                 if feat_cache:
                     pw_matrix = pairwise_distances(np.expand_dims(
                         current_key_feat, 0),
-                                                np.array(feat_cache),
-                                                metric=similar_method,
-                                                n_jobs=-1)
+                                                   np.array(feat_cache),
+                                                   metric=similar_method,
+                                                   n_jobs=-1)
                     if "cosine" == similar_method:
                         is_dup_idx = np.where(pw_matrix >= similar_thr)
                         need_check_idx = np.where(
                             np.logical_and(pw_matrix >= check_thr,
-                                        pw_matrix < similar_thr))
+                                           pw_matrix < similar_thr))
                     else:
                         is_dup_idx = np.where(pw_matrix <= similar_thr)
                         need_check_idx = np.where(
                             np.logical_and(pw_matrix <= check_thr,
-                                        pw_matrix > similar_thr))
+                                           pw_matrix > similar_thr))
 
-                    dup_ids=[]
+                    dup_ids = []
                     for i in is_dup_idx[-1]:
                         dup_ids.append(id_cache[i])
                         query_imgs_id.remove(id_cache[i])
@@ -476,7 +500,8 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
 
                 if need_check_ids:
                     s.view = import_dataset.select(current_key).concat(
-                        dataset.select(need_check_ids).sort_by_similarity(current_key,k=50,brain_key="im_sim_qdrant"))
+                        dataset.select(need_check_ids).sort_by_similarity(
+                            current_key, k=50, brain_key="im_sim_qdrant"))
 
                     t2 = prompt(
                         "是否完成非重复标记?输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
@@ -499,3 +524,251 @@ def duplicate_det(dataset: Optional[focd.Dataset] = None,
 
         except StopIteration as e:
             pass
+
+
+def _generate_dup_info(dataset: focd.Dataset) -> Tuple[str, List, Iterable]:
+    if isinstance(dataset, focd.Dataset):
+        qdrant_collection_name = dataset.name + "_dup_det"
+    else:
+        qdrant_collection_name = dataset.dataset_name + "_dup_det"
+
+    imgs_id = dataset.values("id")
+    imgs_id_iter = iter(imgs_id)
+    return qdrant_collection_name, imgs_id, imgs_id_iter
+
+
+def _is_dup(method, search_score, score_thr) -> bool:
+    if method == "euclidean":
+        return search_score <= score_thr
+    else:
+        return search_score >= score_thr
+
+
+@print_time_deco
+def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
+                  similar_thr: float = 0.985,
+                  check_thr: float = 0.955,
+                  similar_method: str = "cosine",
+                  key_dataset: Optional[focd.Dataset] = None):
+    """
+    This function detects and marks duplicate samples in a dataset.
+
+    Parameters:
+    - query_dataset: An optional `focd.Dataset` object representing the dataset to query for duplicates. If not provided, the function will use the dataset stored in the cache.
+    - similar_thr: A float representing the similarity threshold for considering samples as duplicates. Defaults to 0.995.
+    - check_thr: A float representing the score threshold for checking the similarity of samples. Defaults to 0.985.
+    - similar_method: A string indicating the method used to compute similarity. Must be one of "cosine", "dotproduct", or "euclidean". Defaults to "cosine".
+    - key_dataset: An optional `focd.Dataset` object representing the dataset to use as the key for detecting duplicates. If not provided, the function will use the query dataset as the key dataset.
+
+    Returns:
+    - None
+
+    This function uses the `focd` library to detect duplicate samples in a dataset. It first generates duplicate information for the query dataset, including the dimensionality of the embeddings and the list of query image IDs. Then, it generates duplicate information for the key dataset, including the collection name and the list of key image IDs. It creates a temporary index using the Qdrant backend and computes the similarity between the query and key datasets. It iterates over the query image IDs and checks for duplicates using the Qdrant search method. If a sample is considered a duplicate, it tags the sample as "dup" and saves the similar image URL and score in the dataset. Finally, it cleans up the temporary index and saves the query and key datasets.
+
+    Note: The function decorates the `duplicate_det` function with the `print_time_deco` decorator.
+    """
+    assert similar_method in (
+        "cosine", "dotproduct",
+        "euclidean"), "similar method must be in {}".format(
+            ("cosine", "dotproduct", "euclidean"))
+    if query_dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            query_dataset = s.dataset
+
+    qdrant_collection_name, query_imgs_id, query_imgs_id_iter = _generate_dup_info(
+        query_dataset)
+
+    if key_dataset is None:
+        key_dataset = query_dataset
+
+    _, query_imgs_id, query_imgs_id_iter = _generate_dup_info(query_dataset)
+
+    qdrant_collection_name, key_imgs_id, key_imgs_id_iter = _generate_dup_info(
+        key_dataset)
+
+    print("建立临时索引中,等着吧...")
+    brain_key = "qdrant_dup_det_brain"
+    if brain_key in key_dataset.list_brain_runs():
+        previous_brain_run = key_dataset.load_brain_results(brain_key)
+        previous_brain_run.cleanup()
+        key_dataset.delete_brain_run(brain_key)
+    similar_key_dealer = fob.compute_similarity(
+        key_dataset,
+        embeddings="embedding",
+        backend="qdrant",
+        brain_key=brain_key,
+        metric=similar_method,
+        collection_name=qdrant_collection_name)
+    qc_client: qc.QdrantClient = similar_key_dealer.client
+    print("临时索引建立完毕")
+
+    valida = Validator.from_callable(lambda x: x in ("y", "t", "e"),
+                                     error_message="瞎选什么啊")
+    with fo.ProgressBar(total=len(query_imgs_id),
+                        start_msg="样本检查重复进度:",
+                        complete_msg="样本重复检查完毕") as pb:
+        try:
+            while True:
+                current_query = next(query_imgs_id_iter)
+                if "dup" in query_dataset[current_query].tags:
+                    continue
+                current_query_feat: np.ndarray = query_dataset[
+                    current_query].embedding
+                search_results = qc_client.search(
+                    collection_name=qdrant_collection_name,
+                    query_vector=current_query_feat,
+                    with_payload=True,
+                    limit=100,
+                    score_threshold=check_thr,
+                )
+
+                need_check_samples_map = {}
+                need_check_samples_info = []
+
+                key_dup_info_map = {}
+
+                if not search_results:
+                    continue
+
+                for qdrant_point in search_results:
+                    fiftyone_sid = qdrant_point.payload["sample_id"]
+                    if _is_dup(similar_method, qdrant_point.score,
+                               similar_thr):
+                        key_dup_info_map[fiftyone_sid] = (qdrant_point.id,
+                                                          qdrant_point.score)
+                    else:
+
+                        need_check_samples_map[fiftyone_sid] = (
+                            qdrant_point.id, qdrant_point.score)
+                        need_check_samples_info.append(
+                            (fiftyone_sid, qdrant_point.score))
+                t2 = ''
+                if need_check_samples_info:
+                    need_check_samples_info.sort(
+                        key=lambda x: x[1],
+                        reverse=(similar_method != "euclidean"))
+                    need_check_51_ids = [x[0] for x in need_check_samples_info]
+
+                    s.view = query_dataset.select(current_query).concat(
+                        key_dataset.select(need_check_51_ids))
+
+                    t2 = prompt(
+                        "\n 是否完成非重复标记? \n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
+                        validator=valida,
+                        completer=WordCompleter(["y", "t", "e"]),
+                        default='y')
+
+                    if t2 in ("y", "e"):
+                        need_check_51_ids = set(need_check_51_ids)
+                        sselected = set(s.selected)
+                        dup_51_ids = list(need_check_51_ids - sselected)
+                        for sid in dup_51_ids:
+                            key_dup_info_map[sid] = need_check_samples_map[sid]
+
+                        if current_query not in sselected:
+                            query_dataset.select(current_query).tag_samples(
+                                "dup")
+                            similar_sample_51_id = list(
+                                key_dup_info_map.keys())[0]
+
+                            query_dataset.select(current_query).set_values(
+                                "similar_img",
+                                [key_dataset[similar_sample_51_id].filepath])
+                            query_dataset.select(current_query).set_values(
+                                "similar_img_score",
+                                [key_dup_info_map[similar_sample_51_id][1]])
+                            query_dataset.select(current_query).set_values(
+                                "similar_img_method", [similar_method])
+                    else:
+                        sselected = set(s.selected)
+                        dup_51_ids = sselected
+                        if current_query in sselected:
+                            query_dataset.select(current_query).tag_samples(
+                                "dup")
+                            similar_sample_51_id = list(
+                                key_dup_info_map.keys())[0]
+
+                            query_dataset.select(current_query).set_values(
+                                "similar_img",
+                                [key_dataset[similar_sample_51_id].filepath])
+                            query_dataset.select(current_query).set_values(
+                                "similar_img_score",
+                                [key_dup_info_map[similar_sample_51_id][1]])
+                            query_dataset.select(current_query).set_values(
+                                "similar_img_method", [similar_method])
+                            dup_51_ids.remove(current_query)
+
+                        for sid in dup_51_ids:
+                            key_dup_info_map[sid] = need_check_samples_map[sid]
+
+                dup_sampel_qdrant_ids = []
+                key_sample_51ids = []
+                key_sample_similar_img = [
+                    query_dataset[current_query].filepath
+                ] * len(key_dup_info_map.keys())
+                key_sample_similar_method = [similar_method] * len(
+                    key_dup_info_map.keys())
+                key_sample_similar_score = []
+                for k, v in key_dup_info_map.items():
+                    key_sample_51ids.append(k)
+                    key_sample_similar_score.append(v[1])
+                    dup_sampel_qdrant_ids.append(v[0])
+
+                dataset_part = key_dataset.select(k)
+                dataset_part.tag_samples("dup")
+                dataset_part.set_values("similar_img", key_sample_similar_img)
+                dataset_part.set_values("similar_img_score",
+                                        key_sample_similar_score)
+                dataset_part.set_values("similar_img_method",
+                                        key_sample_similar_method)
+
+                qc_client.delete(
+                    qdrant_collection_name,
+                    points_selector=PointIdsList(points=dup_sampel_qdrant_ids))
+
+                if t2 == "e":
+                    if not pb.complete:
+                        pb.update(1)
+                    break
+
+                if not pb.complete:
+                    pb.update(1)
+
+        except StopIteration as e:
+            pass
+
+        except KeyboardInterrupt as e:
+            pass
+        finally:
+
+            similar_key_dealer.cleanup()
+            if brain_key in key_dataset.list_brain_runs():
+                key_dataset.delete_brain_run(brain_key)
+            s.refresh()
+
+    similar_key_dealer.cleanup()
+    if brain_key in key_dataset.list_brain_runs():
+        key_dataset.delete_brain_run(brain_key)
+    s.refresh()
+
+
+@print_time_deco
+def clean_all_brain_qdrant():
+    """
+    Cleans all brain runs and qdrant in the current dataset.
+    """
+    s = WEAK_CACHE.get("session", None)
+    if s is None:
+        logging.warning("no dataset in cache,do no thing")
+        return
+
+    dataset: fo.Dataset = s.dataset
+    dataset.delete_brain_runs()
+    qc_client = qc.QdrantClient("localhost", port=6333)
+    qc_collection_names = qc_client.get_collections()
+    qc_client.get_collections(qc_collection_names)
+    s.refresh()

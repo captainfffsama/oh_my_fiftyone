@@ -18,7 +18,9 @@
 - qdrant-client
 
 # 需要注意的设定字段
+
 ## 数据集字段和样本字段
+
 - `embedding`: 存放着样本嵌入
 - `ground_truth`: 存放样本标注
 - `model_predict`: 存放模型预测结果
@@ -30,11 +32,12 @@
 - `additions`: 其他一些奇奇怪怪的信息
 
 ## brain_key
+
 - `im_sim_qdrant`: 存放着使用 qdrant 计算数据的相似性
 
 # 使用说明
-参见[使用说明](./doc/user_guide.md)
 
+参见[使用说明](./doc/user_guide.md)
 
 # TODO
 

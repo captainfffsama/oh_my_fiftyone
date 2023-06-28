@@ -106,7 +106,7 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
         """
         return self.embed(self._last_embedding_img)
 
-    def embed(self, img: Union[np.ndarray, str]) -> np.ndarray:
+    def embed(self, img: Union[np.ndarray, str],norm:bool=False) -> np.ndarray:
         """Generates an embedding for the given data.
 
         Subclasses can override this method to increase efficiency, but, by
@@ -115,6 +115,8 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
 
         Args:
             img: the data. See :meth:`predict` for details
+            norm: bool=False
+                if true,embedding will be standardized and L2 normalized
 
         Returns:
             a numpy array containing the embedding
@@ -132,7 +134,11 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
         req.imsize.extend(self._e_imsize)
         response = self.stub.DlEmbeddingGet(req)
 
-        return tensor_proto2np(response).flatten()
+        result=tensor_proto2np(response).flatten()
+        if norm:
+            result=(result-result.mean())/result.std()
+            return result/np.linalg.norm(result)
+        return result
 
     def embed_all(self, imgs):
         """Generates embeddings for the given iterable of data.

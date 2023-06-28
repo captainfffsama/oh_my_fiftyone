@@ -297,7 +297,7 @@ def get_embedding(
             total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
         ) as pb:
             with model as m:
-                deal_one = lambda s, mm: (s, mm.embed(s.filepath))
+                deal_one = lambda s, mm: (s, mm.embed(s.filepath,norm=True))
                 with futures.ThreadPoolExecutor(10) as exec:
                     tasks = [
                         exec.submit(deal_one, sample, m) for sample in dataset
