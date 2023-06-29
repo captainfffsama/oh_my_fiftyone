@@ -567,12 +567,12 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
 
     Note: The function decorates the `duplicate_det` function with the `print_time_deco` decorator.
     """
+    s = WEAK_CACHE.get("session", None)
     assert similar_method in (
         "cosine", "dotproduct",
         "euclidean"), "similar method must be in {}".format(
             ("cosine", "dotproduct", "euclidean"))
     if query_dataset is None:
-        s = WEAK_CACHE.get("session", None)
         if s is None:
             logging.warning("no dataset in cache,do no thing")
             return
