@@ -14,7 +14,6 @@ import qdrant_client as qc
 from qdrant_client.models import PointIdsList
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-
 import ipdb
 from typing import Optional, Union, List, Callable, Tuple, Sequence, Iterable
 from pprint import pprint
@@ -638,18 +637,18 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
 
                 for qdrant_point in search_results:
                     fiftyone_sid = qdrant_point.payload["sample_id"]
-                    if fiftyone_sid==current_query:
+                    if fiftyone_sid == current_query:
                         continue
                     if _is_dup(similar_method, qdrant_point.score,
                                similar_thr):
                         key_dup_info_map[fiftyone_sid] = (qdrant_point.id,
                                                           qdrant_point.score)
                     else:
-
                         need_check_samples_map[fiftyone_sid] = (
                             qdrant_point.id, qdrant_point.score)
                         need_check_samples_info.append(
                             (fiftyone_sid, qdrant_point.score))
+
                 t2 = ''
                 if need_check_samples_info:
                     need_check_samples_info.sort(
@@ -677,7 +676,7 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                             query_dataset.select(current_query).tag_samples(
                                 "dup")
                             similar_sample_51_id = list(
-                                key_dup_info_map.keys())[0]
+                                need_check_51_ids)[0]
 
                             query_dataset.select(current_query).set_values(
                                 "similar_img",
@@ -694,7 +693,7 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                             query_dataset.select(current_query).tag_samples(
                                 "dup")
                             similar_sample_51_id = list(
-                                key_dup_info_map.keys())[0]
+                                need_check_51_ids)[0]
 
                             query_dataset.select(current_query).set_values(
                                 "similar_img",
@@ -748,7 +747,6 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
 
         except KeyboardInterrupt as e:
             pass
-
 
         finally:
 
