@@ -12,6 +12,8 @@ from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit.validation import Validator
 import qdrant_client as qc
 from qdrant_client.models import PointIdsList
+from qdrant_client.http.exceptions import UnexpectedResponse
+
 
 import ipdb
 from typing import Optional, Union, List, Callable, Tuple, Sequence, Iterable
@@ -728,9 +730,10 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                 dataset_part.set_values("similar_img_method",
                                         key_sample_similar_method)
 
-                qc_client.delete(
-                    qdrant_collection_name,
-                    points_selector=PointIdsList(points=dup_sampel_qdrant_ids))
+                # qc_client.delete(
+                #     qdrant_collection_name,
+                #     wait=True,
+                #     points_selector=dup_sampel_qdrant_ids)
 
                 if t2 == "e":
                     if not pb.complete:
@@ -745,6 +748,8 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
 
         except KeyboardInterrupt as e:
             pass
+
+
         finally:
 
             similar_key_dealer.cleanup()
@@ -772,5 +777,5 @@ def clean_all_brain_qdrant():
     dataset.delete_brain_runs()
     qc_client = qc.QdrantClient("localhost", port=6333)
     qc_collection_names = qc_client.get_collections()
-    qc_client.get_collections(qc_collection_names)
+    qc_client.delete_collection(qc_collection_names)
     s.refresh()
