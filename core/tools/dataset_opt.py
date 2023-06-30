@@ -636,8 +636,6 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
 
                 for qdrant_point in search_results:
                     fiftyone_sid = qdrant_point.payload["sample_id"]
-                    if fiftyone_sid==current_query:
-                        continue
                     if _is_dup(similar_method, qdrant_point.score,
                                similar_thr):
                         key_dup_info_map[fiftyone_sid] = (qdrant_point.id,
@@ -720,7 +718,7 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                     key_sample_similar_score.append(v[1])
                     dup_sampel_qdrant_ids.append(v[0])
 
-                dataset_part = key_dataset.select(k)
+                dataset_part = key_dataset.select(key_sample_51ids)
                 dataset_part.tag_samples("dup")
                 dataset_part.set_values("similar_img", key_sample_similar_img)
                 dataset_part.set_values("similar_img_score",
