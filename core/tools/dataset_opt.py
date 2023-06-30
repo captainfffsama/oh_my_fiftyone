@@ -635,6 +635,8 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                     continue
 
                 for qdrant_point in search_results:
+                    if fiftyone_sid==current_query:
+                        continue
                     fiftyone_sid = qdrant_point.payload["sample_id"]
                     if _is_dup(similar_method, qdrant_point.score,
                                similar_thr):
