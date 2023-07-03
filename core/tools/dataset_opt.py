@@ -581,11 +581,16 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
         else:
             query_dataset = s.dataset
 
+
+    query_dataset = query_dataset.exclude(query_dataset.match_tags("dup").values("id"))
+
     qdrant_collection_name, query_imgs_id, query_imgs_id_iter = _generate_dup_info(
         query_dataset)
 
     if key_dataset is None:
         key_dataset = query_dataset
+    else:
+        key_dataset = key_dataset.exclude(key_dataset.match_tags("dup").values("id"))
 
     _, query_imgs_id, query_imgs_id_iter = _generate_dup_info(query_dataset)
 
@@ -616,7 +621,9 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                         start_msg="样本检查重复进度:",
                         complete_msg="样本重复检查完毕") as pb:
         try:
-            all_dup_51_sample_id=set([])
+            all_dup_51_sample_id = set(
+                key_dataset.match_tags("dup").values("id") +
+                query_dataset.match_tags("dup").values("id"))
             while True:
                 current_query = next(query_imgs_id_iter)
                 if "dup" in query_dataset[current_query].tags:
