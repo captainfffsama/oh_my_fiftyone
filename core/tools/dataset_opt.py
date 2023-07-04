@@ -633,6 +633,7 @@ def duplicate_det(
                 current_query = next(query_imgs_id_iter)
                 if "dup" in query_dataset[
                         current_query].tags or current_query in query_have_done_ids:
+                    query_have_done_ids.add(current_query)
                     continue
                 current_query_feat: np.ndarray = query_dataset[
                     current_query].embedding
@@ -645,6 +646,7 @@ def duplicate_det(
                 )
 
                 if not search_results:
+                    query_have_done_ids.add(current_query)
                     continue
 
                 need_check_samples_map = {}
