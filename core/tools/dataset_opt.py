@@ -647,9 +647,7 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                 key_dup_info_map = {}
                 for qdrant_point in search_results:
                     fiftyone_sid = qdrant_point.payload["sample_id"]
-                    if fiftyone_sid == current_query:
-                        continue
-                    if fiftyone_sid in all_dup_51_sample_id:
+                    if fiftyone_sid == current_query or fiftyone_sid in all_dup_51_sample_id:
                         continue
                     if _is_dup(similar_method, qdrant_point.score,
                                similar_thr):
@@ -739,13 +737,14 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                     all_dup_51_sample_id.add(k)
                     # dup_sampel_qdrant_ids.append(v[0])
 
-                dataset_part = key_dataset.select(key_sample_51ids)
-                dataset_part.tag_samples("dup")
-                dataset_part.set_values("similar_img", key_sample_similar_img)
-                dataset_part.set_values("similar_img_score",
-                                        key_sample_similar_score)
-                dataset_part.set_values("similar_img_method",
-                                        key_sample_similar_method)
+                if key_sample_51ids:
+                    dataset_part = key_dataset.select(key_sample_51ids)
+                    dataset_part.tag_samples("dup")
+                    dataset_part.set_values("similar_img", key_sample_similar_img)
+                    dataset_part.set_values("similar_img_score",
+                                            key_sample_similar_score)
+                    dataset_part.set_values("similar_img_method",
+                                            key_sample_similar_method)
 
                 # result=qc_client.delete(
                 #     qdrant_collection_name,
