@@ -547,27 +547,27 @@ def _is_dup(method, search_score, score_thr) -> bool:
 
 
 @print_time_deco
-def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
-                  similar_thr: float = 0.985,
-                  check_thr: float = 0.955,
-                  similar_method: str = "cosine",
-                  key_dataset: Optional[focd.Dataset] = None):
+def duplicate_det(
+        query_dataset: Optional[focd.Dataset] = None,
+        similar_thr: float = 0.985,
+        check_thr: float = 0.955,
+        similar_method: str = "cosine",
+        key_dataset: Optional[focd.Dataset] = None,
+        query_have_done_ids: Optional[List[str]] = None) -> List[str]:
     """
-    This function detects and marks duplicate samples in a dataset.
+    注释是gpt写的,我懒
+    Perform duplicate detection on a given query dataset.
 
-    Parameters:
-    - query_dataset: An optional `focd.Dataset` object representing the dataset to query for duplicates. If not provided, the function will use the dataset stored in the cache.
-    - similar_thr: A float representing the similarity threshold for considering samples as duplicates. Defaults to 0.995.
-    - check_thr: A float representing the score threshold for checking the similarity of samples. Defaults to 0.985.
-    - similar_method: A string indicating the method used to compute similarity. Must be one of "cosine", "dotproduct", or "euclidean". Defaults to "cosine".
-    - key_dataset: An optional `focd.Dataset` object representing the dataset to use as the key for detecting duplicates. If not provided, the function will use the query dataset as the key dataset.
+    Args:
+        query_dataset (Optional[focd.Dataset]): The dataset to perform duplicate detection on. Defaults to None.
+        similar_thr (float): The similarity threshold for considering two samples as duplicates. Defaults to 0.985.
+        check_thr (float): The score threshold for considering a search result as a potential duplicate. Defaults to 0.955.
+        similar_method (str): The method for computing similarity between samples. Must be one of "cosine", "dotproduct", or "euclidean". Defaults to "cosine".
+        key_dataset (Optional[focd.Dataset]): The dataset to use as the key dataset for duplicate detection. Defaults to None.
+        query_have_done_ids (Optional[List[str]]): A list of IDs of the query samples that have already been processed. Defaults to None.
 
     Returns:
-    - None
-
-    This function uses the `focd` library to detect duplicate samples in a dataset. It first generates duplicate information for the query dataset, including the dimensionality of the embeddings and the list of query image IDs. Then, it generates duplicate information for the key dataset, including the collection name and the list of key image IDs. It creates a temporary index using the Qdrant backend and computes the similarity between the query and key datasets. It iterates over the query image IDs and checks for duplicates using the Qdrant search method. If a sample is considered a duplicate, it tags the sample as "dup" and saves the similar image URL and score in the dataset. Finally, it cleans up the temporary index and saves the query and key datasets.
-
-    Note: The function decorates the `duplicate_det` function with the `print_time_deco` decorator.
+        List[str]: A list of IDs of the query samples that have been processed.
     """
     s = WEAK_CACHE.get("session", None)
     assert similar_method in (
@@ -580,6 +580,10 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
             return
         else:
             query_dataset = s.dataset
+    if query_have_done_ids is None:
+        query_have_done_ids = set([])
+    else:
+        query_have_done_ids = set(query_have_done_ids)
 
     query_dataset = query_dataset.exclude(
         query_dataset.match_tags("dup").values("id"))
@@ -627,7 +631,8 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                 query_dataset.match_tags("dup").values("id"))
             while True:
                 current_query = next(query_imgs_id_iter)
-                if "dup" in query_dataset[current_query].tags:
+                if "dup" in query_dataset[
+                        current_query].tags or current_query in query_have_done_ids:
                     continue
                 current_query_feat: np.ndarray = query_dataset[
                     current_query].embedding
@@ -739,7 +744,8 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                 if key_sample_51ids:
                     dataset_part = key_dataset.select(key_sample_51ids)
                     dataset_part.tag_samples("dup")
-                    dataset_part.set_values("similar_img", key_sample_similar_img)
+                    dataset_part.set_values("similar_img",
+                                            key_sample_similar_img)
                     dataset_part.set_values("similar_img_score",
                                             key_sample_similar_score)
                     dataset_part.set_values("similar_img_method",
@@ -749,6 +755,7 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                 #     qdrant_collection_name,
                 #     wait=True,
                 #     points_selector=dup_sampel_qdrant_ids)
+                query_have_done_ids.add(current_query)
 
                 if t2 == "e":
                     if not pb.complete:
@@ -765,16 +772,17 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
             pass
 
         finally:
-
             similar_key_dealer.cleanup()
             if brain_key in key_dataset.list_brain_runs():
                 key_dataset.delete_brain_run(brain_key)
             s.refresh()
+            return query_have_done_ids
 
-    similar_key_dealer.cleanup()
-    if brain_key in key_dataset.list_brain_runs():
-        key_dataset.delete_brain_run(brain_key)
-    s.refresh()
+    # similar_key_dealer.cleanup()
+    # if brain_key in key_dataset.list_brain_runs():
+    #     key_dataset.delete_brain_run(brain_key)
+    # s.refresh()
+    # return query_have_done_ids
 
 
 @print_time_deco
