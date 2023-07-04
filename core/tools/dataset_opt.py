@@ -710,14 +710,13 @@ def duplicate_det(query_dataset: Optional[focd.Dataset] = None,
                             query_dataset.select(current_query).set_values(
                                 "similar_img",
                                 [key_dataset[similar_sample_51_id].filepath])
-                            query_dataset.select(current_query).set_values(
-                                "similar_img_score",
-                                [key_dup_info_map[similar_sample_51_id][1]])
                             query_dataset.select(
                                 current_query
                             ).set_values("similar_img_score", [
                                 need_check_samples_map[similar_sample_51_id][1]
                             ])
+                            query_dataset.select(current_query).set_values(
+                                "similar_img_method", [similar_method])
                             dup_51_ids.remove(current_query)
 
                         for sid in dup_51_ids:
