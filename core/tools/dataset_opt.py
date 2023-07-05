@@ -556,18 +556,16 @@ def duplicate_det(
         query_have_done_ids: Optional[List[str]] = None) -> List[str]:
     """
     注释是gpt写的,我懒
-    Perform duplicate detection on a given query dataset.
-
     Args:
-        query_dataset (Optional[focd.Dataset]): The dataset to perform duplicate detection on. Defaults to None.
-        similar_thr (float): The similarity threshold for considering two samples as duplicates. Defaults to 0.985.
-        check_thr (float): The score threshold for considering a search result as a potential duplicate. Defaults to 0.955.
-        similar_method (str): The method for computing similarity between samples. Must be one of "cosine", "dotproduct", or "euclidean". Defaults to "cosine".
-        key_dataset (Optional[focd.Dataset]): The dataset to use as the key dataset for duplicate detection. Defaults to None.
-        query_have_done_ids (Optional[List[str]]): A list of IDs of the query samples that have already been processed. Defaults to None.
+    query_dataset (Optional[focd.Dataset]): 要执行重复检测的数据集。默认为None。
+    similar_thr (float): 将两个样本视为重复的相似度阈值。默认为0.985。
+    check_thr (float): 将搜索结果视为潜在重复的分数阈值。默认为0.955。
+    similar_method (str): 计算样本之间相似度的方法。必须是"cosine"、"dotproduct"或"euclidean"之一。默认为"cosine"。
+    key_dataset (Optional[focd.Dataset]): 用作重复检测的关键数据集。默认为None。
+    query_have_done_ids (Optional[List[str]]): 已经处理过的查询样本的ID列表。默认为None。
 
     Returns:
-        List[str]: A list of IDs of the query samples that have been processed.
+    List[str]: 已经处理过的查询样本的ID列表。
     """
     s = WEAK_CACHE.get("session", None)
     assert similar_method in (
@@ -772,13 +770,19 @@ def duplicate_det(
 
         except KeyboardInterrupt as e:
             pass
+        except RuntimeError as e:
+            print(e)
+            pass
+        except Exception as e:
+            print(e)
+            pass
 
         finally:
             similar_key_dealer.cleanup()
             if brain_key in key_dataset.list_brain_runs():
                 key_dataset.delete_brain_run(brain_key)
             s.refresh()
-            return query_have_done_ids
+            return list(query_have_done_ids)
 
     # similar_key_dealer.cleanup()
     # if brain_key in key_dataset.list_brain_runs():
