@@ -1,6 +1,6 @@
 import base64
 import hashlib
-from typing import Tuple,Union,Dict,List,Optional
+from typing import Tuple, Union, Dict, List, Optional
 import time
 from contextlib import contextmanager
 import os
@@ -195,20 +195,24 @@ def get_sample_field(sample, field, default=None):
     else:
         return default
 
-def img2base64(file:Union[str,np.ndarray]) -> bytes:
+
+def img2base64(file: Union[str, np.ndarray]) -> bytes:
     if isinstance(file, str):
-        img_file = open(file,'rb')   # 二进制打开图片文件
+        img_file = open(file, "rb")  # 二进制打开图片文件
         img_b64encode = base64.b64encode(img_file.read())  # base64编码
         img_file.close()  # 文件关闭
         return img_b64encode
-    elif isinstance(file,np.ndarray):
-        img_str = cv2.imencode('.jpg',file)[1].tostring()  # 将图片编码成流数据，放到内存缓存中，然后转化成string格式
-        img_b64encode = base64.b64encode(img_str) # 编码成base64
+    elif isinstance(file, np.ndarray):
+        img_str = cv2.imencode(".jpg", file)[
+            1
+        ].tostring()  # 将图片编码成流数据，放到内存缓存中，然后转化成string格式
+        img_b64encode = base64.b64encode(img_str)  # 编码成base64
         return img_b64encode
     else:
         return None
 
-def base642img(base64code:bytes) -> np.ndarray:
+
+def base642img(base64code: bytes) -> np.ndarray:
     str_decode = base64.b64decode(base64code)
     nparr = np.fromstring(str_decode, np.uint8)
     img_restore = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -216,26 +220,26 @@ def base642img(base64code:bytes) -> np.ndarray:
 
 
 def tensor_proto2np(tensor_pb):
-    np_matrix = np.array(tensor_pb.data,
-                         dtype=np.float).reshape(tensor_pb.shape)
+    np_matrix = np.array(tensor_pb.data, dtype=np.float).reshape(tensor_pb.shape)
     return np_matrix
 
-def NMS(boxes, iou_thr=0.5,sort_by="area"):
+
+def NMS(boxes, iou_thr=0.5, sort_by="area"):
     if len(boxes) == 0:
         return []
     if boxes.dtype.kind == "i":
         boxes = boxes.astype("float")
     pick = []
-    x1 = boxes[:,0]
-    y1 = boxes[:,1]
-    x2 = boxes[:,2]
-    y2 = boxes[:,3]
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
     area = (x2 - x1 + 1) * (y2 - y1 + 1)
-    if sort_by=="area":
+    if sort_by == "area":
         # small to large
         idxs = np.argsort(area)[::-1]
     else:
-        idxs=np.argsort(boxes[:,4])
+        idxs = np.argsort(boxes[:, 4])
     while len(idxs) > 0:
         last = len(idxs) - 1
         i = idxs[last]
@@ -246,45 +250,53 @@ def NMS(boxes, iou_thr=0.5,sort_by="area"):
         yy2 = np.minimum(y2[i], y2[idxs[:last]])
         w = np.maximum(0, xx2 - xx1 + 1)
         h = np.maximum(0, yy2 - yy1 + 1)
-        iou = (w * h) / (area[idxs[:last]]+area[i]-(w*h))
-        idxs = np.delete(idxs, np.concatenate(([last],
-            np.where(iou>iou_thr)[0])))
+        iou = (w * h) / (area[idxs[:last]] + area[i] - (w * h))
+        idxs = np.delete(idxs, np.concatenate(([last], np.where(iou > iou_thr)[0])))
     return boxes[pick]
 
-def det_labels2npdict(labels:Union[List[fol.Detection],fol.Detections]) -> Dict[str,np.ndarray]:
-    if isinstance(labels,fol.Detections):
-        labels=labels.detections
+
+def det_labels2npdict(
+    labels: Union[List[fol.Detection], fol.Detections]
+) -> Dict[str, np.ndarray]:
+    if isinstance(labels, fol.Detections):
+        labels = labels.detections
 
     result = defaultdict(list)
     for label in labels:
-        x1,y1,w,h=label.bounding_box
+        x1, y1, w, h = label.bounding_box
         score = label.confidence if label.confidence is not None else 1.0
-        cls_name=label.label
-        result[cls_name].append([x1,y1,x1+w,y1+h,score])
+        cls_name = label.label
+        result[cls_name].append([x1, y1, x1 + w, y1 + h, score])
 
-    for k,v in result.items():
-        result[k]=np.array(v)
+    for k, v in result.items():
+        result[k] = np.array(v)
 
     return result
 
-def np2dict2det_labels(label_dict:Dict[str,np.ndarray]) -> list:
-    result_list=[]
-    for k,v in label_dict.items():
+
+def np2dict2det_labels(label_dict: Dict[str, np.ndarray]) -> list:
+    result_list = []
+    for k, v in label_dict.items():
         for obj in v:
-            x1,y1,x2,y2,s=obj.tolist()
-            result_list.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))
+            x1, y1, x2, y2, s = obj.tolist()
+            result_list.append(
+                fol.Detection(label=k, bounding_box=[x1, y1, x2 - x1, y2 - y1])
+            )
 
     return result_list
 
-def fol_det_nms(labels:Union[List[fol.Detection],fol.Detections],iou_thr=0.5,sort_by="area"):
-    npdict=det_labels2npdict(labels)
 
-    r=[]
-    for k,v in npdict.items():
-        nms_r=NMS(v,iou_thr,sort_by)
+def fol_det_nms(
+    labels: Union[List[fol.Detection], fol.Detections], iou_thr=0.5, sort_by="area"
+):
+    npdict = det_labels2npdict(labels)
+
+    r = []
+    for k, v in npdict.items():
+        nms_r = NMS(v, iou_thr, sort_by)
         for obj in nms_r:
-            x1,y1,x2,y2,s=obj.tolist()
-            r.append(fol.Detection(label=k,bounding_box=[x1,y1,x2-x1,y2-y1]))
+            x1, y1, x2, y2, s = obj.tolist()
+            r.append(fol.Detection(label=k, bounding_box=[x1, y1, x2 - x1, y2 - y1]))
 
     return fol.Detections(detections=r)
 
@@ -304,9 +316,9 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
         if vv:
             result[v] = vv
 
-    result["chiebot_sample_tags"] = get_sample_field(sample,
-                                                     "chiebot_sample_tags",
-                                                     default=[])
+    result["chiebot_sample_tags"] = get_sample_field(
+        sample, "chiebot_sample_tags", default=[]
+    )
 
     result["img_shape"] = (
         sample["metadata"].height,
@@ -334,23 +346,22 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
 
             result["objs_info"].append(obj)
 
-    embedding: Optional[np.ndarray] = get_sample_field(sample, "embedding",
-                                                       None)
+    embedding: Optional[np.ndarray] = get_sample_field(sample, "embedding", None)
 
     if embedding is not None:
-        result["embedding"] = base64.b64encode(
-            embedding.tobytes()).decode("utf-8")
+        result["embedding"] = base64.b64encode(embedding.tobytes()).decode("utf-8")
 
-    save_path = os.path.join(save_dir,
-                             os.path.splitext(sample.filename)[0] + ".anno")
+    save_path = os.path.join(save_dir, os.path.splitext(sample.filename)[0] + ".anno")
 
     if backup_dir is not None:
         ori_anno = os.path.splitext(sample.filepath)[0] + ".anno"
         if os.path.exists(ori_anno):
             shutil.copy(
                 ori_anno,
-                os.path.join(backup_dir,
-                             os.path.splitext(sample.filename)[0] + ".anno"))
+                os.path.join(
+                    backup_dir, os.path.splitext(sample.filename)[0] + ".anno"
+                ),
+            )
 
     with open(save_path, "w") as fw:
         json.dump(result, fw, indent=4, sort_keys=True)
@@ -358,7 +369,9 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
     return save_path
 
 
-def _export_one_sample(sample, exporter, get_anno:bool, save_dir,export_classes:Optional[list]=None):
+def _export_one_sample(
+    sample, exporter, get_anno: bool, save_dir, export_classes: Optional[list] = None
+):
     image_path = sample.filepath
 
     metadata = sample.metadata
@@ -369,12 +382,12 @@ def _export_one_sample(sample, exporter, get_anno:bool, save_dir,export_classes:
     if export_classes is None:
         label = sample["ground_truth"]
     else:
-        label=[]
+        label = []
         for obj in sample["ground_truth"].detections:
             if obj.label in export_classes:
                 label.append(obj)
 
-        label=fol.Detections(detections=label)
+        label = fol.Detections(detections=label)
 
     exporter.export_sample(image_path, label, metadata=metadata)
 
@@ -383,5 +396,12 @@ def _export_one_sample(sample, exporter, get_anno:bool, save_dir,export_classes:
 
 
 def return_now_time():
-    now_time=datetime.now()
-    return "{}_{}_{}_{}_{}_{}".format(now_time.year,now_time.month,now_time.day,now_time.hour,now_time.minute,now_time.second)
+    now_time = datetime.now()
+    return "{}_{}_{}_{}_{}_{}".format(
+        now_time.year,
+        now_time.month,
+        now_time.day,
+        now_time.hour,
+        now_time.minute,
+        now_time.second,
+    )
