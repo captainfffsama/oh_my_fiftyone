@@ -8,13 +8,13 @@
 
 # requirements
 
-- fiftyone >=0.20.0
+- fiftyone >=0.21.4
 - ipython
 - loguru
 - pid
 - piexif
-- grpc == 1.51.0
-- grpc-tools==1.51.0
+- grpc >= 1.51.0
+- grpc-tools>=1.51.0
 - qdrant-client
 
 # 需要注意的设定字段
