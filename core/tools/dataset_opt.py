@@ -26,6 +26,7 @@ from concurrent import futures
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
+import fiftyone.core.session as focs
 import fiftyone.brain as fob
 from sklearn.metrics import pairwise_distances
 import numpy as np
@@ -567,7 +568,7 @@ def duplicate_det(
     Returns:
     List[str]: 已经处理过的查询样本的ID列表。
     """
-    s = WEAK_CACHE.get("session", None)
+    s:Optional[focs.Session] = WEAK_CACHE.get("session", None)
     assert similar_method in (
         "cosine", "dotproduct",
         "euclidean"), "similar method must be in {}".format(
@@ -671,6 +672,7 @@ def duplicate_det(
                         reverse=(similar_method != "euclidean"))
                     need_check_51_ids = [x[0] for x in need_check_samples_info]
 
+                    s.clear_view()
                     s.view = query_dataset.select(current_query).concat(
                         key_dataset.select(need_check_51_ids,ordered=True))
 
