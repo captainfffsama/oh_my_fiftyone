@@ -52,7 +52,13 @@ def preprocess_one(
             and img.shape[-1] == 3
         ):
             shutil.copy(img_path, os.path.join(save_dir, new_name + ".jpg"))
-            piexif.remove(os.path.join(save_dir, new_name + ".jpg"))
+            try:
+                piexif.remove(os.path.join(save_dir, new_name + ".jpg"))
+            except Exception as e:
+                print("{} remove exif fail,use opencv resave".format(img_path))
+                print(e)
+                cv2.imwrite(os.path.join(save_dir, new_name + ".jpg"), img)
+
         else:
             cv2.imwrite(os.path.join(save_dir, new_name + ".jpg"), img)
     else:
