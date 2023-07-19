@@ -669,6 +669,8 @@ def duplicate_det(
                     or current_query in query_have_done_ids
                 ):
                     query_have_done_ids.add(current_query)
+                    if not pb.complete:
+                        pb.update(1)
                     continue
                 current_query_feat: np.ndarray = query_dataset[current_query].embedding
                 search_results = qc_client.search(
@@ -681,6 +683,8 @@ def duplicate_det(
 
                 if not search_results:
                     query_have_done_ids.add(current_query)
+                    if not pb.complete:
+                        pb.update(1)
                     continue
 
                 need_check_samples_map = {}
