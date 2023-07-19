@@ -722,6 +722,7 @@ def duplicate_det(
                     s.view = query_dataset.select(current_query).concat(
                         key_dataset.select(need_check_51_ids, ordered=True)
                     )
+                    s.refresh()
 
                     t2 = prompt(
                         "\n 是否完成非重复标记? \n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
