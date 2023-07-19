@@ -613,6 +613,7 @@ def duplicate_det(
     if query_have_done_ids is None:
         query_have_done_ids = set([])
     else:
+        query_dataset=query_dataset.exclude(query_have_done_ids)
         query_have_done_ids = set(query_have_done_ids)
 
     query_dataset = query_dataset.exclude(query_dataset.match_tags("dup").values("id"))
