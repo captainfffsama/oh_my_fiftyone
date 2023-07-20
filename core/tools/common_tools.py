@@ -276,8 +276,8 @@ def get_embedding(
         dataset (Optional[focd.Dataset], optional):
             同之前. Defaults to None.
 
-        save_field: Optional[str] = "model_predict":
-            用来保存结果的字段.默认是Sample的model_predict 字段
+        save_field: Optional[str] = "embedding":
+            用来保存结果的字段.默认是Sample的 embedding 字段
 
     """
     if dataset is None:
