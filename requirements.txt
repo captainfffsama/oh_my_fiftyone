@@ -1,0 +1,9 @@
+fiftyone >=0.20.0
+ipdb
+loguru
+pid
+piexif
+qdrant-client
+grpcio-tools
+grpcio
+tqdm
