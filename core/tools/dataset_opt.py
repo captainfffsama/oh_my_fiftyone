@@ -7,6 +7,11 @@
 @FilePath: /dataset_manager/core/tools/dataset_opt.py
 @Description:
 """
+import os
+import json
+from concurrent import futures
+import time
+
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit.validation import Validator
@@ -14,21 +19,14 @@ import qdrant_client as qc
 from qdrant_client.models import PointIdsList
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-import ipdb
 from typing import Optional, Union, List, Callable, Tuple, Sequence, Iterable
-from pprint import pprint
 from datetime import datetime
-from copy import deepcopy
 
-import os
-import json
-from concurrent import futures
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.core.session as focs
 import fiftyone.brain as fob
-from sklearn.metrics import pairwise_distances
 import numpy as np
 from tqdm import tqdm
 
@@ -441,9 +439,11 @@ def duplicate_det(
                         reverse=(similar_method != "euclidean"))
                     need_check_51_ids = [x[0] for x in need_check_samples_info]
 
-                    s.view = query_dataset.select(current_query).concat(
-                        key_dataset.select(need_check_51_ids, ordered=True))
-                    s.refresh()
+
+                    show_51_ids = [current_query]+need_check_51_ids
+
+                    time.sleep(0.5)
+                    s.view=s.dataset.select(show_51_ids,ordered=True)
 
                     t2 = prompt(
                         "\n 是否完成非重复标记? \n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
@@ -559,7 +559,7 @@ def duplicate_det(
             similar_key_dealer.cleanup()
             if brain_key in key_dataset.list_brain_runs():
                 key_dataset.delete_brain_run(brain_key)
-            s.refresh()
+            s.clear_view()
             return list(query_have_done_ids)
 
     # similar_key_dealer.cleanup()
