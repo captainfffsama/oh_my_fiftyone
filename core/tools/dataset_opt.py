@@ -331,23 +331,22 @@ def duplicate_det(
             return
         else:
             query_dataset = s.dataset
+
+    query_dataset = query_dataset.exclude(
+        query_dataset.match_tags("dup").values("id"))
+
+    if key_dataset is None:
+        key_dataset = query_dataset.view()
+    else:
+        key_dataset = key_dataset.exclude(
+            key_dataset.match_tags("dup").values("id"))
+
+    # 处理存档
     if query_have_done_ids is None:
         query_have_done_ids = set([])
     else:
         query_dataset = query_dataset.exclude(query_have_done_ids)
         query_have_done_ids = set(query_have_done_ids)
-
-    query_dataset = query_dataset.exclude(
-        query_dataset.match_tags("dup").values("id"))
-
-    qdrant_collection_name, query_imgs_id, query_imgs_id_iter = _generate_dup_info(
-        query_dataset)
-
-    if key_dataset is None:
-        key_dataset = query_dataset
-    else:
-        key_dataset = key_dataset.exclude(
-            key_dataset.match_tags("dup").values("id"))
 
     _, query_imgs_id, query_imgs_id_iter = _generate_dup_info(query_dataset)
 
@@ -379,6 +378,9 @@ def duplicate_det(
                         start_msg="样本检查重复进度:",
                         complete_msg="样本重复检查完毕") as pb:
         try:
+            # NOTE: 这里应该就是空的
+            print("dup num:",len(key_dataset.match_tags("dup").values("id") +
+                query_dataset.match_tags("dup").values("id")))
             all_dup_51_sample_id = set(
                 key_dataset.match_tags("dup").values("id") +
                 query_dataset.match_tags("dup").values("id"))
@@ -386,6 +388,10 @@ def duplicate_det(
                 current_query = next(query_imgs_id_iter)
                 if ("dup" in query_dataset[current_query].tags
                         or current_query in query_have_done_ids):
+                    # FIXME: juse test
+                    if (current_query in query_have_done_ids):
+                        print("当前样本已经处理过了")
+
                     query_have_done_ids.add(current_query)
                     if not pb.complete:
                         pb.update(1)
@@ -438,7 +444,6 @@ def duplicate_det(
                     s.view = query_dataset.select(current_query).concat(
                         key_dataset.select(need_check_51_ids, ordered=True))
                     s.refresh()
-
 
                     t2 = prompt(
                         "\n 是否完成非重复标记? \n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
