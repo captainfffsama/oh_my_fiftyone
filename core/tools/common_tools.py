@@ -384,7 +384,9 @@ def find_similar_img(
         limit=topk,
     )
 
-    similar_imgs_id = [
-        qdrant_point.payload["sample_id"] for qdrant_point in search_results
+    tmp= [
+        (qdrant_point.payload["sample_id"],qdrant_point.score) for qdrant_point in search_results
     ]
-    s.view=s.dataset.select(similar_imgs_id)
+    tmp.sort(key=lambda x:x[1],reverse=True)
+    similar_imgs_id=[x[0] for x in tmp]
+    s.view=s.dataset.select(similar_imgs_id,ordered=True)
