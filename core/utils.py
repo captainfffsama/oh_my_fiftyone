@@ -14,9 +14,16 @@ import cv2
 import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
+import fiftyone.core.view as focv
 from PIL import Image
 import numpy as np
 from core.logging import logging
+
+def optimize_view(dataset:Union[fo.Dataset,fo.DatasetView])->Union[fo.Dataset,fo.DatasetView]:
+    if isinstance(dataset,focv.DatasetView):
+        return focv.make_optimized_select_view(dataset,dataset.values("id"))
+    else:
+        return dataset
 
 
 def get_all_file_path(

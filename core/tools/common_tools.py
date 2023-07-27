@@ -20,12 +20,13 @@ from concurrent import futures
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
+import fiftyone.core.view as focv
 from tqdm import tqdm
 from PIL import Image
 import piexif
 import cv2
 
-from core.utils import get_sample_field, md5sum, get_all_file_path
+from core.utils import get_sample_field, md5sum, get_all_file_path,optimize_view
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
@@ -64,14 +65,14 @@ def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
         logging.warning("no dataset in cache,no thing export")
         return
     else:
-        dataset = session.dataset
+        dataset:fo.Dataset = session.dataset
     if dataset and session:
         if txt_path is not None:
             if os.path.exists(txt_path):
                 imgs_path = get_all_file_path(txt_path)
-                return dataset.select_by("filepath", imgs_path)
+                return dataset.select_by("filepath", imgs_path,ordered=True)
         else:
-            return dataset.select(session.selected)
+            return dataset.select(session.selected,ordered=True)
     return None
 
 
@@ -79,14 +80,14 @@ def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
 def dataset_value2txt(
     value: str = "filepath",
     save_txt: Optional[str] = None,
-    dataset: Optional[focd.Dataset] = None,
+    dataset: Optional[fo.DatasetView] = None,
 ):
     """将数据集的特定字段导入到txt
 
     Args:
         value (str, optional): 需要导出的字段. Defaults to "filepath".
         save_txt (Optional[str], optional): 需要保存的txt的路径,若为None就仅print出. Defaults to None.
-        dataset (Optional[focd.Dataset], optional): 需要导出字段的数据集,若为None就是 ``session.dataset``. Defaults to None.
+        dataset (Optional[fo.DatasetView], optional): 需要导出字段的数据集,若为None就是 ``session.dataset``. Defaults to None.
     """
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -107,13 +108,13 @@ def dataset_value2txt(
 
 @print_time_deco
 def imgslist2dataview(
-    imgslist: Union[str, List[str]], dataset: Optional[focd.Dataset] = None
+    imgslist: Union[str, List[str]], dataset: Optional[fo.Dataset] = None
 ) -> fo.DatasetView:
     """传入文件列表本身或者路径得到对应的dataview
 
     Args:
         imgslist (Union[str, List[str]]): 可以是一个记录了图片文件绝对路径的txt,或者图片目录或者是一个pythonlist
-        dataset (Optional[focd.Dataset], optional): 同以前函数. Defaults to None.
+        dataset (Optional[fo.Dataset], optional): 同以前函数. Defaults to None.
 
     Returns:
         fo.DatasetView: 图片list的dataview
@@ -129,7 +130,7 @@ def imgslist2dataview(
     if isinstance(imgslist, str):
         imgslist = get_all_file_path(imgslist)
 
-    return dataset.select_by("filepath", imgslist)
+    return dataset.select_by("filepath", imgslist,ordered=True)
 
 
 @print_time_deco
@@ -204,7 +205,7 @@ def check_dataset_exif(
 def model_det(
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
-    dataset: Optional[focd.Dataset] = None,
+    dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None,
     save_field: Optional[str] = "model_predict",
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
@@ -216,7 +217,7 @@ def model_det(
         model (Optional[ProtoBaseDetection], optional):
             用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
 
-        dataset (Optional[focd.Dataset], optional):
+        dataset (Optional[Union[fo.Dataset,fo.DatasetView]], optional):
             同之前. Defaults to None.
 
         save_field: Optional[str] = "model_predict":
@@ -230,6 +231,7 @@ def model_det(
             return
         else:
             dataset = s.dataset
+    dataset=optimize_view(dataset)
     if model is None:
         if model_initargs is None:
             model_initargs = {}
@@ -261,7 +263,7 @@ def model_det(
 def get_embedding(
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
-    dataset: Optional[focd.Dataset] = None,
+    dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None,
     save_field: Optional[str] = "embedding",
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
@@ -273,7 +275,7 @@ def get_embedding(
         model (Optional[ProtoBaseDetection], optional):
             用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
 
-        dataset (Optional[focd.Dataset], optional):
+        dataset (Optional[Union[fo.Dataset,fo.DatasetView]], optional):
             同之前. Defaults to None.
 
         save_field: Optional[str] = "embedding":
@@ -287,6 +289,7 @@ def get_embedding(
             return
         else:
             dataset = s.dataset
+    dataset=optimize_view(dataset)
     if model is None:
         if model_initargs is None:
             model_initargs = {}
