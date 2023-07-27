@@ -25,8 +25,10 @@ from tqdm import tqdm
 from PIL import Image
 import piexif
 import cv2
+import numpy as np
+import qdrant_client as qc
 
-from core.utils import get_sample_field, md5sum, get_all_file_path,optimize_view
+from core.utils import get_sample_field, md5sum, get_all_file_path, optimize_view
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
@@ -35,6 +37,7 @@ from core.model import ProtoBaseDetection, ChiebotObjectDetection
 
 
 def print_time_deco(func):
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -44,7 +47,8 @@ def print_time_deco(func):
             raise e
         finally:
             end = time.perf_counter()
-            print("\033[1;34m操作完成时间: {}, 操作耗时: {} 秒\033[0m".format(datetime.now(),end-start))
+            print("\033[1;34m操作完成时间: {}, 操作耗时: {} 秒\033[0m".format(
+                datetime.now(), end - start))
         return result
 
     return wrapper
@@ -65,14 +69,14 @@ def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
         logging.warning("no dataset in cache,no thing export")
         return
     else:
-        dataset:fo.Dataset = session.dataset
+        dataset: fo.Dataset = session.dataset
     if dataset and session:
         if txt_path is not None:
             if os.path.exists(txt_path):
                 imgs_path = get_all_file_path(txt_path)
-                return dataset.select_by("filepath", imgs_path,ordered=True)
+                return dataset.select_by("filepath", imgs_path, ordered=True)
         else:
-            return dataset.select(session.selected,ordered=True)
+            return dataset.select(session.selected, ordered=True)
     return None
 
 
@@ -107,9 +111,8 @@ def dataset_value2txt(
 
 
 @print_time_deco
-def imgslist2dataview(
-    imgslist: Union[str, List[str]], dataset: Optional[fo.Dataset] = None
-) -> fo.DatasetView:
+def imgslist2dataview(imgslist: Union[str, List[str]],
+                      dataset: Optional[fo.Dataset] = None) -> fo.DatasetView:
     """传入文件列表本身或者路径得到对应的dataview
 
     Args:
@@ -130,7 +133,7 @@ def imgslist2dataview(
     if isinstance(imgslist, str):
         imgslist = get_all_file_path(imgslist)
 
-    return dataset.select_by("filepath", imgslist,ordered=True)
+    return dataset.select_by("filepath", imgslist, ordered=True)
 
 
 @print_time_deco
@@ -168,10 +171,10 @@ def check_dataset_exif(
 
     have_exif = []
     for sample in tqdm(
-        dataset,
-        desc="exif 检查进度:",
-        dynamic_ncols=True,
-        colour="green",
+            dataset,
+            desc="exif 检查进度:",
+            dynamic_ncols=True,
+            colour="green",
     ):
         img = Image.open(sample["filepath"])
         if "exif" in img.info:
@@ -180,9 +183,8 @@ def check_dataset_exif(
                 try:
                     piexif.remove(sample["filepath"])
                 except Exception as e:
-                    logging.critical(
-                        "{} remove piexif faild".format(sample["filepath"])
-                    )
+                    logging.critical("{} remove piexif faild".format(
+                        sample["filepath"]))
                     print("{} remove piexif faild".format(sample["filepath"]))
                     if cv2_fix and isinstance(e, piexif.InvalidImageDataError):
                         img = cv2.imread(
@@ -205,7 +207,7 @@ def check_dataset_exif(
 def model_det(
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
-    dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None,
+    dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
     save_field: Optional[str] = "model_predict",
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
@@ -231,16 +233,16 @@ def model_det(
             return
         else:
             dataset = s.dataset
-    dataset=optimize_view(dataset)
+    dataset = optimize_view(dataset)
     if model is None:
         if model_initargs is None:
             model_initargs = {}
         model = ChiebotObjectDetection(**model_initargs)
 
     if isinstance(model, ProtoBaseDetection):
-        with fo.ProgressBar(
-            total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
-        ) as pb:
+        with fo.ProgressBar(total=len(dataset),
+                            start_msg="模型检测进度:",
+                            complete_msg="检测完毕") as pb:
             with model as m:
                 deal_one = lambda s, mm: (s, mm.predict(s.filepath))
                 with futures.ThreadPoolExecutor(10) as exec:
@@ -259,11 +261,12 @@ def model_det(
     if session is not None:
         session.refresh()
 
+
 @print_time_deco
 def get_embedding(
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
-    dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None,
+    dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
     save_field: Optional[str] = "embedding",
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
@@ -289,18 +292,18 @@ def get_embedding(
             return
         else:
             dataset = s.dataset
-    dataset=optimize_view(dataset)
+    dataset = optimize_view(dataset)
     if model is None:
         if model_initargs is None:
             model_initargs = {}
         model = ChiebotObjectDetection(**model_initargs)
 
     if isinstance(model, ProtoBaseDetection):
-        with fo.ProgressBar(
-            total=len(dataset), start_msg="模型检测进度:", complete_msg="检测完毕"
-        ) as pb:
+        with fo.ProgressBar(total=len(dataset),
+                            start_msg="模型检测进度:",
+                            complete_msg="检测完毕") as pb:
             with model as m:
-                deal_one = lambda s, mm: (s, mm.embed(s.filepath,norm=True))
+                deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
                 with futures.ThreadPoolExecutor(10) as exec:
                     tasks = [
                         exec.submit(deal_one, sample, m) for sample in dataset
@@ -316,3 +319,72 @@ def get_embedding(
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
+
+@print_time_deco
+def find_similar_img(
+    image: Union[str, np.ndarray],
+    model_initargs: Optional[dict] = None,
+    model: Optional[ProtoBaseDetection] = None,
+    qdrant_collection_name : Optional[str] = None,
+    topk: int = 25,
+):
+    """从数据库中查找相似图片
+
+    Args:
+        image: Union[str,np.ndarray],
+            待查图片
+
+        model_initargs: (Optional[dict],optinal):
+            用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
+            默认参数是dict(host="127.0.0.1:52007")
+
+        model (Optional[ProtoBaseDetection], optional):
+            用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
+
+        qdrant_collection_name : Optional[str] = None:
+            qc数据库仓库名称,不写就默认是session.dataset.name + "_sim"
+
+        topk: int = 25:
+            取最相似的多少个图片
+
+    """
+    s: fo.Session = WEAK_CACHE.get("session", None)
+    if s is None:
+        logging.warning("no dataset in cache,do no thing")
+        return
+    qc_client = qc.QdrantClient(host="127.0.0.1", port=6333)
+    if qdrant_collection_name is None:
+        qdrant_collection_name = s.dataset.name + "_sim"
+    try:
+        qc_client.get_collection(qdrant_collection_name)
+    except Exception as e:
+        logging.warning("{} not exist".format(qdrant_collection_name))
+        return
+
+    if model is None:
+        if model_initargs is None:
+            model_initargs = {"host":"127.0.0.1:52007"}
+        model = ChiebotObjectDetection(**model_initargs)
+
+    img_embed = None
+    if isinstance(model, ProtoBaseDetection):
+        with model as m:
+            img_embed = m.embed(image, norm=True)
+    else:
+        pass
+    if img_embed is None:
+        logging.error("generate img failed")
+        return
+
+    search_results = qc_client.search(
+        collection_name=qdrant_collection_name,
+        query_vector=img_embed,
+        with_payload=True,
+        limit=topk,
+    )
+
+    similar_imgs_id = [
+        qdrant_point.payload["sample_id"] for qdrant_point in search_results
+    ]
+    s.view=s.dataset.select(similar_imgs_id)

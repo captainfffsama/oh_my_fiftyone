@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-06-28 15:38:20
+@LastEditTime: 2023-07-27 21:37:16
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -20,7 +20,8 @@
     - generate_qdrant_idx: 使用qdrant数据库生成相似性表示
     - duplicate_det: 分段检查重复样本
     - clean_all_brain_qdrant: 清理所有brain run 和qdrant
+    - find_similar_img: 寻找相似图片
 '''
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det,clean_all_brain_qdrant
-from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding
+from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding, find_similar_img
