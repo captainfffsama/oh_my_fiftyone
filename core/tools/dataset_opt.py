@@ -11,6 +11,7 @@ import os
 import json
 from concurrent import futures
 import time
+import traceback
 
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
@@ -551,10 +552,10 @@ def duplicate_det(
         except KeyboardInterrupt as e:
             pass
         except RuntimeError as e:
-            print(e)
+            traceback.print_exc(limit=-1)
             pass
         except Exception as e:
-            print(e)
+            traceback.print_exc(limit=-1)
             pass
 
         finally:

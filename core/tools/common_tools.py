@@ -13,6 +13,7 @@ from pprint import pprint
 from datetime import datetime
 from functools import wraps
 import time
+from collections.abc import Sequence
 
 import os
 import json
@@ -395,3 +396,101 @@ def find_similar_img(
     pprint(score_map)
     similar_imgs_id = [x[0] for x in tmp]
     s.view = s.dataset.select(similar_imgs_id, ordered=True)
+
+
+@print_time_deco
+def tag_chiebot_sample(
+    tags: Union[str, List[str]],
+    dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
+):
+    """
+    更新chiebot_sample_tags,没有这个字段的样本会创建chiebot_sample_tags字段并更新
+
+    Parameters:
+    - tags: A string or a list of strings representing the tags to be applied to the function.
+    - dataset: An optional Dataset or DatasetView object representing the dataset on which the function will be applied.
+
+    Returns:
+    None
+    """
+
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+
+    if isinstance(tags, str):
+        tags = {tags}
+    else:
+        tags = set(tags)
+
+    dataset = optimize_view(dataset)
+    KEY = "chiebot_sample_tags"
+    for sample in tqdm(
+            dataset.iter_samples(autosave=True),
+            total=len(dataset),
+            desc="{} 更新进度:".format(KEY),
+            dynamic_ncols=True,
+            colour="green",
+    ):
+        if sample.has_field(KEY):
+            content=sample.get_field(KEY)
+            if content is None:
+                content=set()
+            else:
+                content=set(content)
+            content |= tags
+            sample.set_field(KEY, tuple(content),dynamic=True)
+        else:
+            sample.set_field(KEY, tuple(tags),dynamic=True)
+
+
+@print_time_deco
+def untag_chiebot_sample(
+    tags: Union[str, List[str]],
+    dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
+):
+    """
+    删除chiebot_sample_tags
+
+    Parameters:
+    - tags: A string or a list of strings representing the tags to be applied to the function.
+    - dataset: An optional Dataset or DatasetView object representing the dataset on which the function will be applied.
+
+    Returns:
+    None
+    """
+
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is None:
+            logging.warning("no dataset in cache,do no thing")
+            return
+        else:
+            dataset = s.dataset
+
+    if isinstance(tags, str):
+        tags = {tags}
+    else:
+        tags = set(tags)
+
+    dataset = optimize_view(dataset)
+    KEY = "chiebot_sample_tags"
+    for sample in tqdm(
+            dataset.iter_samples(autosave=True),
+            total=len(dataset),
+            desc="{} 更新进度:".format(KEY),
+            dynamic_ncols=True,
+            colour="green",
+    ):
+        if sample.has_field(KEY):
+            content=sample.get_field(KEY)
+            if content is None:
+                content=set()
+            else:
+                content=set(content)
+            content -= tags
+            sample.set_field(KEY, tuple(content),dynamic=True)
