@@ -21,6 +21,7 @@ from concurrent import futures
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.core.view as focv
+import fiftyone.brain as fob
 from tqdm import tqdm
 from PIL import Image
 import piexif
@@ -326,8 +327,8 @@ def find_similar_img(
     image: Union[str, np.ndarray],
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
-    qdrant_collection_name : Optional[str] = None,
-    topk: int = 25,
+    qdrant_collection_name: Optional[str] = None,
+    topk: int = 3,
 ):
     """从数据库中查找相似图片
 
@@ -345,7 +346,7 @@ def find_similar_img(
         qdrant_collection_name : Optional[str] = None:
             qc数据库仓库名称,不写就默认是session.dataset.name + "_sim"
 
-        topk: int = 25:
+        topk: int = 3:
             取最相似的多少个图片
 
     """
@@ -353,7 +354,10 @@ def find_similar_img(
     if s is None:
         logging.warning("no dataset in cache,do no thing")
         return
-    qc_client = qc.QdrantClient(host="127.0.0.1", port=6333)
+    qc_host_port = fob.brain_config.similarity_backends.get("qdrant", {}).get(
+        "url", "127.0.0.1:6333")
+    host, port = qc_host_port.split(":")
+    qc_client = qc.QdrantClient(host=host, port=int(port))
     if qdrant_collection_name is None:
         qdrant_collection_name = s.dataset.name + "_sim"
     try:
@@ -364,7 +368,7 @@ def find_similar_img(
 
     if model is None:
         if model_initargs is None:
-            model_initargs = {"host":"127.0.0.1:52007"}
+            model_initargs = {"host": "127.0.0.1:52007"}
         model = ChiebotObjectDetection(**model_initargs)
 
     img_embed = None
@@ -384,9 +388,10 @@ def find_similar_img(
         limit=topk,
     )
 
-    tmp= [
-        (qdrant_point.payload["sample_id"],qdrant_point.score) for qdrant_point in search_results
-    ]
-    tmp.sort(key=lambda x:x[1],reverse=True)
-    similar_imgs_id=[x[0] for x in tmp]
-    s.view=s.dataset.select(similar_imgs_id,ordered=True)
+    tmp = [(qdrant_point.payload["sample_id"], qdrant_point.score)
+           for qdrant_point in search_results]
+    tmp.sort(key=lambda x: x[1], reverse=True)
+    score_map = {s.dataset[x[0]].filepath: x[1] for x in tmp}
+    pprint(score_map)
+    similar_imgs_id = [x[0] for x in tmp]
+    s.view = s.dataset.select(similar_imgs_id, ordered=True)
