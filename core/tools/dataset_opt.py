@@ -9,30 +9,27 @@
 """
 import os
 import json
-from concurrent import futures
 import time
 import traceback
+from typing import Optional, Union, List
+from datetime import datetime
 
 from prompt_toolkit import prompt
-from prompt_toolkit.completion import WordCompleter, PathCompleter
+from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.validation import Validator
 import qdrant_client as qc
-from qdrant_client.models import PointIdsList
-from qdrant_client.http.exceptions import UnexpectedResponse
 
-from typing import Optional, Union, List, Callable, Tuple, Sequence, Iterable
-from datetime import datetime
+import numpy as np
+from tqdm import tqdm
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.core.view as focv
 import fiftyone.core.session as focs
 import fiftyone.brain as fob
-import numpy as np
-from tqdm import tqdm
+from fiftyone import ViewField as F
 
 from core.utils import get_sample_field, md5sum, get_all_file_path, timeblock, optimize_view
-from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
@@ -319,8 +316,7 @@ def duplicate_det(
         return
     if check_default_input not in {"y", "t"}:
         logging.warning(
-            "check_default_input must be in y,t,check_default_input fix to y"
-        )
+            "check_default_input must be in y,t,check_default_input fix to y")
         check_default_input = "y"
 
     if similar_method not in {"cosine", "dotproduct", "euclidean"}:
@@ -352,6 +348,19 @@ def duplicate_det(
 
     query_dataset: focv.DatasetView = s.dataset.select(query_dataset_ids)
     key_dataset: focv.DatasetView = s.dataset.select(key_dataset_ids)
+    tmp_d = query_dataset.match(F("embedding").is_null())
+    if not len(tmp_d):
+        print(
+            "query_dataset have some img no embedding,please use T.get_embedding to get embedding"
+        )
+        return
+
+    tmp_d = key_dataset.match(F("embedding").is_null())
+    if not len(tmp_d):
+        print(
+            "key_dataset have some img no embedding,please use T.get_embedding to get embedding"
+        )
+        return
 
     qdrant_collection_name = query_dataset.dataset_name + "_dup_det"
 
