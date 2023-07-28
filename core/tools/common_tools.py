@@ -357,8 +357,10 @@ def find_similar_img(
         return
     qc_host_port = fob.brain_config.similarity_backends.get("qdrant", {}).get(
         "url", "127.0.0.1:6333")
-    host, port = qc_host_port.split(":")
-    qc_client = qc.QdrantClient(host=host, port=int(port))
+    last_colon=qc_host_port.rfind(":")
+    host=qc_host_port[:last_colon]
+    port=int(qc_host_port[last_colon+1:])
+    qc_client = qc.QdrantClient(host=host, port=port)
     if qdrant_collection_name is None:
         qdrant_collection_name = s.dataset.name + "_sim"
     try:
