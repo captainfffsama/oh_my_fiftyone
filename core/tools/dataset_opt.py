@@ -30,7 +30,7 @@ import fiftyone.brain as fob
 import numpy as np
 from tqdm import tqdm
 
-from core.utils import get_sample_field, md5sum, get_all_file_path, timeblock,optimize_view
+from core.utils import get_sample_field, md5sum, get_all_file_path, timeblock, optimize_view
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 from core.logging import logging
 
@@ -172,7 +172,7 @@ def add_dataset_fields_by_txt(
         else:
             dataset = s.dataset
 
-    dataset=optimize_view(dataset)
+    dataset = optimize_view(dataset)
 
     if isinstance(txt_path, str):
         imgs_path = get_all_file_path(
@@ -204,7 +204,8 @@ def add_dataset_fields_by_txt(
 
 
 @print_time_deco
-def clean_dataset(dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None, ):
+def clean_dataset(dataset: Optional[Union[fo.Dataset,
+                                          fo.DatasetView]] = None, ):
     """清除数据库中实际文件已经不存在的样本
 
     Args:
@@ -217,7 +218,7 @@ def clean_dataset(dataset: Optional[Union[fo.Dataset,fo.DatasetView]] = None, ):
             return
         else:
             dataset = s.dataset
-    dataset=optimize_view(dataset)
+    dataset = optimize_view(dataset)
 
     need_del = []
 
@@ -250,7 +251,7 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
             return
         else:
             dataset = s.dataset
-    dataset=optimize_view(dataset)
+    dataset = optimize_view(dataset)
     if brain_key in dataset.list_brain_runs():
         previous_brain_run = dataset.load_brain_results(brain_key)
         if previous_brain_run:
@@ -279,6 +280,7 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
     s.refresh()
     return result
 
+
 def _is_dup(method, search_score, score_thr) -> bool:
     if method == "euclidean":
         return search_score <= score_thr
@@ -294,6 +296,7 @@ def duplicate_det(
     similar_method: str = "cosine",
     key_dataset: Optional[focv.DatasetView] = None,
     query_have_done_ids: Optional[List[str]] = None,
+    check_default_input: str = "y",
 ) -> List[str]:
     """
     注释是gpt写的,我懒
@@ -304,6 +307,7 @@ def duplicate_det(
     similar_method (str): 计算样本之间相似度的方法。必须是"cosine"、"dotproduct"或"euclidean"之一。默认为"cosine"。
     key_dataset (Optional[focv.DatasetView]): 用作重复检测的关键数据集。默认为None。
     query_have_done_ids (Optional[List[str]]): 已经处理过的查询样本的ID列表。默认为None。
+    check_default_input: str= "y": 人工检查时的默认输入。默认为"y"。
 
     Returns:
     List[str]: 已经处理过的查询样本的ID列表。
@@ -312,24 +316,31 @@ def duplicate_det(
     if s is None:
         logging.error("no dataset in cache,do no thing")
         return
-    assert similar_method in (
-        "cosine",
-        "dotproduct",
-        "euclidean",
-    ), "similar method must be in {}".format(
-        ("cosine", "dotproduct", "euclidean"))
+    if check_default_input not in {"y", "t"}:
+        logging.warning(
+            "check_default_input must be in y,t,check_default_input fix to y"
+        )
+        check_default_input = "y"
+
+    if similar_method not in {"cosine", "dotproduct", "euclidean"}:
+        logging.warning(
+            "similar_method must in cosine, dotproduct, euclidean,similar_method fix to cosine"
+        )
+        similar_method = "cosine"
     if query_dataset is None:
         query_dataset_ids = set(s.dataset.values("id"))
     else:
         query_dataset_ids = set(query_dataset.values("id"))
 
-    query_dataset_ids=query_dataset_ids-set(s.dataset.match_tags("dup").values("id"))
+    query_dataset_ids = query_dataset_ids - set(
+        s.dataset.match_tags("dup").values("id"))
 
     if key_dataset is None:
-        key_dataset_ids=query_dataset_ids.copy()
+        key_dataset_ids = query_dataset_ids.copy()
     else:
-        key_dataset_ids=set(key_dataset.exclude(
-            key_dataset.match_tags("dup").values("id")).values("id"))
+        key_dataset_ids = set(
+            key_dataset.exclude(
+                key_dataset.match_tags("dup").values("id")).values("id"))
 
     # 处理存档
     if query_have_done_ids is None:
@@ -338,10 +349,10 @@ def duplicate_det(
         query_have_done_ids = set(query_have_done_ids)
         query_dataset_ids = query_dataset_ids - query_have_done_ids
 
-    query_dataset:focv.DatasetView=s.dataset.select(query_dataset_ids)
-    key_dataset:focv.DatasetView=s.dataset.select(key_dataset_ids)
+    query_dataset: focv.DatasetView = s.dataset.select(query_dataset_ids)
+    key_dataset: focv.DatasetView = s.dataset.select(key_dataset_ids)
 
-    qdrant_collection_name=query_dataset.dataset_name + "_dup_det"
+    qdrant_collection_name = query_dataset.dataset_name + "_dup_det"
 
     print("建立临时索引中,等着吧...")
     brain_key = "qdrant_dup_det_brain"
@@ -371,7 +382,7 @@ def duplicate_det(
             all_dup_51_sample_id = set(
                 key_dataset.match_tags("dup").values("id") +
                 query_dataset.match_tags("dup").values("id"))
-            for idx,current_query_sample in enumerate(query_dataset):
+            for idx, current_query_sample in enumerate(query_dataset):
                 if ("dup" in current_query_sample.tags):
                     query_have_done_ids.add(current_query_sample.id)
                     if not pb.complete:
@@ -380,8 +391,10 @@ def duplicate_det(
                 if not current_query_sample.has_field("embedding"):
                     if not pb.complete:
                         pb.update(1)
-                    print("{}样本没有embedding,跳过".format(current_query_sample.filepath))
-                    logging.warning("{}样本没有embedding,跳过".format(current_query_sample.filepath))
+                    print("{}样本没有embedding,跳过".format(
+                        current_query_sample.filepath))
+                    logging.warning("{}样本没有embedding,跳过".format(
+                        current_query_sample.filepath))
                     continue
 
                 current_query_feat: np.ndarray = current_query_sample.embedding
@@ -408,7 +421,7 @@ def duplicate_det(
                             or fiftyone_sid in all_dup_51_sample_id):
                         continue
                     if _is_dup(similar_method, qdrant_point.score,
-                            similar_thr):
+                               similar_thr):
                         key_dup_info_map[fiftyone_sid] = (
                             qdrant_point.id,
                             qdrant_point.score,
@@ -437,7 +450,7 @@ def duplicate_det(
                         "\n 是否完成非重复标记? \n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
                         validator=valida,
                         completer=WordCompleter(["y", "t", "e"]),
-                        default="y",
+                        default=check_default_input,
                     )
                     if t2 in ("y", "e"):
                         need_check_51_ids = set(need_check_51_ids)
@@ -448,45 +461,53 @@ def duplicate_det(
 
                         if current_query_sample.id not in sselected:
                             all_dup_51_sample_id.add(current_query_sample.id)
-                            s.dataset.select(current_query_sample.id).tag_samples(
-                                "dup")
+                            s.dataset.select(
+                                current_query_sample.id).tag_samples("dup")
                             similar_sample_51_id = list(need_check_51_ids)[0]
 
-                            s.dataset.select(current_query_sample.id).set_values(
+                            s.dataset.select(
+                                current_query_sample.id
+                            ).set_values(
                                 "similar_img",
                                 [key_dataset[similar_sample_51_id].filepath],
                             )
-                            s.dataset.select(current_query_sample.id).set_values(
-                                "similar_img_score",
-                                [
-                                    need_check_samples_map[
-                                        similar_sample_51_id][1]
-                                ],
-                            )
-                            s.dataset.select(current_query_sample.id).set_values(
-                                "similar_img_method", [similar_method])
+                            s.dataset.select(
+                                current_query_sample.id).set_values(
+                                    "similar_img_score",
+                                    [
+                                        need_check_samples_map[
+                                            similar_sample_51_id][1]
+                                    ],
+                                )
+                            s.dataset.select(
+                                current_query_sample.id).set_values(
+                                    "similar_img_method", [similar_method])
                     else:
                         sselected = set(s.selected)
                         dup_51_ids = sselected
                         if current_query_sample.id in sselected:
                             all_dup_51_sample_id.add(current_query_sample.id)
-                            s.dataset.select(current_query_sample.id).tag_samples(
-                                "dup")
+                            s.dataset.select(
+                                current_query_sample.id).tag_samples("dup")
                             similar_sample_51_id = list(need_check_51_ids)[0]
 
-                            s.dataset.select(current_query_sample.id).set_values(
+                            s.dataset.select(
+                                current_query_sample.id
+                            ).set_values(
                                 "similar_img",
                                 [key_dataset[similar_sample_51_id].filepath],
                             )
-                            s.dataset.select(current_query_sample.id).set_values(
-                                "similar_img_score",
-                                [
-                                    need_check_samples_map[
-                                        similar_sample_51_id][1]
-                                ],
-                            )
-                            s.dataset.select(current_query_sample.id).set_values(
-                                "similar_img_method", [similar_method])
+                            s.dataset.select(
+                                current_query_sample.id).set_values(
+                                    "similar_img_score",
+                                    [
+                                        need_check_samples_map[
+                                            similar_sample_51_id][1]
+                                    ],
+                                )
+                            s.dataset.select(
+                                current_query_sample.id).set_values(
+                                    "similar_img_method", [similar_method])
                             dup_51_ids.remove(current_query_sample.id)
 
                         for sid in dup_51_ids:
@@ -496,9 +517,8 @@ def duplicate_det(
 
                 # dup_sampel_qdrant_ids = []
                 key_sample_51ids = []
-                key_sample_similar_img = [
-                    current_query_sample.filepath
-                ] * len(key_dup_info_map.keys())
+                key_sample_similar_img = [current_query_sample.filepath] * len(
+                    key_dup_info_map.keys())
                 key_sample_similar_method = [similar_method] * len(
                     key_dup_info_map.keys())
                 key_sample_similar_score = []
@@ -509,7 +529,7 @@ def duplicate_det(
                     # dup_sampel_qdrant_ids.append(v[0])
 
                 if key_sample_51ids:
-                    dataset_part =s.dataset.select(key_sample_51ids)
+                    dataset_part = s.dataset.select(key_sample_51ids)
                     dataset_part.tag_samples("dup")
                     dataset_part.set_values("similar_img",
                                             key_sample_similar_img)
