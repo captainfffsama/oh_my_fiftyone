@@ -13,7 +13,6 @@ from pprint import pprint
 from datetime import datetime
 from functools import wraps
 import time
-from collections.abc import Sequence
 
 import os
 import json
@@ -354,24 +353,24 @@ def find_similar_img(
     s: fo.Session = WEAK_CACHE.get("session", None)
     if s is None:
         logging.warning("no dataset in cache,do no thing")
+        print("s is None")
         return
-    qc_host_port = fob.brain_config.similarity_backends.get("qdrant", {}).get(
+    qc_url = fob.brain_config.similarity_backends.get("qdrant", {}).get(
         "url", "127.0.0.1:6333")
-    last_colon=qc_host_port.rfind(":")
-    host=qc_host_port[:last_colon]
-    port=int(qc_host_port[last_colon+1:])
-    qc_client = qc.QdrantClient(host=host, port=port)
+    qc_client = qc.QdrantClient(url=qc_url)
     if qdrant_collection_name is None:
         qdrant_collection_name = s.dataset.name + "_sim"
     try:
         qc_client.get_collection(qdrant_collection_name)
     except Exception as e:
         logging.warning("{} not exist".format(qdrant_collection_name))
+        print("collection {} not exist".format(qdrant_collection_name))
+        print(e)
         return
 
     if model is None:
         if model_initargs is None:
-            model_initargs = {"host": "127.0.0.1:52007"}
+            model_initargs = {"host":"127.0.0.1:52007"}
         model = ChiebotObjectDetection(**model_initargs)
 
     img_embed = None
@@ -382,6 +381,7 @@ def find_similar_img(
         pass
     if img_embed is None:
         logging.error("generate img failed")
+        print("generate img failed")
         return
 
     search_results = qc_client.search(
@@ -394,10 +394,14 @@ def find_similar_img(
     tmp = [(qdrant_point.payload["sample_id"], qdrant_point.score)
            for qdrant_point in search_results]
     tmp.sort(key=lambda x: x[1], reverse=True)
-    score_map = {s.dataset[x[0]].filepath: x[1] for x in tmp}
-    pprint(score_map)
-    similar_imgs_id = [x[0] for x in tmp]
+    print("===========================================")
+    similar_imgs_id=[]
+    for idx,x in enumerate(tmp):
+        print("{:3}---{} : {}".format(idx+1,s.dataset[x[0]].filepath,x[1]))
+        similar_imgs_id.append(x[0])
+    print("===========================================")
     s.view = s.dataset.select(similar_imgs_id, ordered=True)
+    s.refresh()
 
 
 @print_time_deco
