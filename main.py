@@ -324,6 +324,7 @@ def merge_label():
     img_path_dict = {}
     label_dict = defaultdict(list)
 
+    # k是文件夹名,v 是类别list
     cfg_path = os.path.join(labels_part_dir, "cfg.json")
     if os.path.exists(cfg_path):
         with open(cfg_path, "r") as fr:

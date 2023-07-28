@@ -190,6 +190,7 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
             filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
         )
 
+    # TODO: 这里需要注意以下,默认的路径
     dst_dir=exist_dataset.info.get("dataset_dir",os.path.split(exist_dataset.first().filepath)[0])
 
     new_imgs_path=[]
