@@ -349,14 +349,14 @@ def duplicate_det(
     query_dataset: focv.DatasetView = s.dataset.select(query_dataset_ids)
     key_dataset: focv.DatasetView = s.dataset.select(key_dataset_ids)
     tmp_d = query_dataset.match(F("embedding").is_null())
-    if not len(tmp_d):
+    if len(tmp_d):
         print(
             "query_dataset have some img no embedding,please use T.get_embedding to get embedding"
         )
         return
 
     tmp_d = key_dataset.match(F("embedding").is_null())
-    if not len(tmp_d):
+    if len(tmp_d):
         print(
             "key_dataset have some img no embedding,please use T.get_embedding to get embedding"
         )
