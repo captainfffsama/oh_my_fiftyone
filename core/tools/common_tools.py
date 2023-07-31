@@ -449,9 +449,9 @@ def tag_chiebot_sample(
             else:
                 content=set(content)
             content |= tags
-            sample.set_field(KEY, tuple(content),validate=False,dynamic=True)
+            sample.set_field(KEY, tuple(content),validate=False,dynamic=False)
         else:
-            sample.set_field(KEY, tuple(tags),validate=False,dynamic=True)
+            sample.set_field(KEY, tuple(tags),validate=False,dynamic=False)
 
 
 @print_time_deco
@@ -499,4 +499,4 @@ def untag_chiebot_sample(
             else:
                 content=set(content)
             content -= tags
-            sample.set_field(KEY, tuple(content),validate=False,dynamic=True)
+            sample.set_field(KEY, tuple(content),validate=False,dynamic=False)
