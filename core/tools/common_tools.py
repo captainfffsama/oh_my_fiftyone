@@ -56,10 +56,13 @@ def print_time_deco(func):
 
 
 @print_time_deco
-def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
+def get_select_dv(txt_path: str = None,
+                  ordered: bool = False) -> Optional[fo.DatasetView]:
     """返回被选中的数据的视图,若有txt就返回txt中的,没有就是浏览器中选中的
     Args:
         txt_path (Optional[str]):txt是一个记录了图片路径的文本文件
+        ordered (bool, optional): 是否按照时间排序. Defaults to False.
+            超级大数据的时候,选择使用ordered 会报 aggregate command document too large 的错误
 
     Returns:
         Optional[fo.DatasetView]: 返回被选中的数据的视图
@@ -75,9 +78,11 @@ def get_select_dv(txt_path: str = None) -> Optional[fo.DatasetView]:
         if txt_path is not None:
             if os.path.exists(txt_path):
                 imgs_path = get_all_file_path(txt_path)
-                return dataset.select_by("filepath", imgs_path, ordered=True)
+                return dataset.select_by("filepath",
+                                         imgs_path,
+                                         ordered=ordered)
         else:
-            return dataset.select(session.selected, ordered=True)
+            return dataset.select(session.selected, ordered=ordered)
     return None
 
 
@@ -113,12 +118,15 @@ def dataset_value2txt(
 
 @print_time_deco
 def imgslist2dataview(imgslist: Union[str, List[str]],
-                      dataset: Optional[fo.Dataset] = None) -> fo.DatasetView:
+                      dataset: Optional[fo.Dataset] = None,
+                      ordered: bool = False) -> fo.DatasetView:
     """传入文件列表本身或者路径得到对应的dataview
 
     Args:
         imgslist (Union[str, List[str]]): 可以是一个记录了图片文件绝对路径的txt,或者图片目录或者是一个pythonlist
         dataset (Optional[fo.Dataset], optional): 同以前函数. Defaults to None.
+        ordered (bool, optional): 是否按照时间排序. Defaults to False.
+            超级大数据的时候,选择使用ordered 会报 aggregate command document too large 的错误
 
     Returns:
         fo.DatasetView: 图片list的dataview
@@ -134,7 +142,7 @@ def imgslist2dataview(imgslist: Union[str, List[str]],
     if isinstance(imgslist, str):
         imgslist = get_all_file_path(imgslist)
 
-    return dataset.select_by("filepath", imgslist, ordered=True)
+    return dataset.select_by("filepath", imgslist, ordered=ordered)
 
 
 @print_time_deco
@@ -370,7 +378,7 @@ def find_similar_img(
 
     if model is None:
         if model_initargs is None:
-            model_initargs = {"host":"127.0.0.1:52007"}
+            model_initargs = {"host": "127.0.0.1:52007"}
         model = ChiebotObjectDetection(**model_initargs)
 
     img_embed = None
@@ -395,9 +403,9 @@ def find_similar_img(
            for qdrant_point in search_results]
     tmp.sort(key=lambda x: x[1], reverse=True)
     print("===========================================")
-    similar_imgs_id=[]
-    for idx,x in enumerate(tmp):
-        print("{:3}---{} : {}".format(idx+1,s.dataset[x[0]].filepath,x[1]))
+    similar_imgs_id = []
+    for idx, x in enumerate(tmp):
+        print("{:3}---{} : {}".format(idx + 1, s.dataset[x[0]].filepath, x[1]))
         similar_imgs_id.append(x[0])
     print("===========================================")
     s.view = s.dataset.select(similar_imgs_id, ordered=True)
@@ -443,15 +451,18 @@ def tag_chiebot_sample(
             colour="green",
     ):
         if sample.has_field(KEY):
-            content=sample.get_field(KEY)
+            content = sample.get_field(KEY)
             if content is None:
-                content=set()
+                content = set()
             else:
-                content=set(content)
+                content = set(content)
             content |= tags
-            sample.set_field(KEY, tuple(content),validate=False,dynamic=False)
+            sample.set_field(KEY,
+                             tuple(content),
+                             validate=False,
+                             dynamic=False)
         else:
-            sample.set_field(KEY, tuple(tags),validate=False,dynamic=False)
+            sample.set_field(KEY, tuple(tags), validate=False, dynamic=False)
 
 
 @print_time_deco
@@ -493,10 +504,13 @@ def untag_chiebot_sample(
             colour="green",
     ):
         if sample.has_field(KEY):
-            content=sample.get_field(KEY)
+            content = sample.get_field(KEY)
             if content is None:
-                content=set()
+                content = set()
             else:
-                content=set(content)
+                content = set(content)
             content -= tags
-            sample.set_field(KEY, tuple(content),validate=False,dynamic=False)
+            sample.set_field(KEY,
+                             tuple(content),
+                             validate=False,
+                             dynamic=False)
