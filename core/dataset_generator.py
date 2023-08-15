@@ -127,13 +127,15 @@ def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,impor
             ni_all_classes=set(import_data_cls)
         else:
             ni_all_classes=set([x.label for x in ni_s_label])
-
+            
         final_label=[]
+        for idx,i in enumerate(ni_s_label):
+            if i.label in ni_all_classes:
+                final_label.append(i)
+        
         for idx,i in enumerate(e_s_label):
             if i.label not in ni_all_classes:
                 final_label.append(i)
-
-        final_label.extend(ni_s_label)
 
         exist_sample.ground_truth=fol.Detections(detections=final_label)
         _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
