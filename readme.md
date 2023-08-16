@@ -8,7 +8,7 @@
 
 # requirements
 
-- fiftyone >=0.21.4
+- fiftyone >=0.21.6
 - ipython
 - loguru
 - pid

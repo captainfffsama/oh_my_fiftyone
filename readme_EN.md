@@ -8,7 +8,7 @@ This is a small tool based on fiftyone for managing data.
 
 # Requirements
 
-- fiftyone >=0.21.4
+- fiftyone >=0.21.6
 - ipython
 - loguru
 - pid
