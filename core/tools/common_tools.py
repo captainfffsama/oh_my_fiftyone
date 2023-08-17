@@ -13,6 +13,7 @@ from pprint import pprint
 from datetime import datetime
 from functools import wraps
 import time
+import gc
 
 import os
 import json
@@ -323,6 +324,9 @@ def get_embedding(
 
                             sample[save_field] = objs
                             context.save(sample)
+                            del objs
+                            gc.collect()
+
     else:
         pass
 
