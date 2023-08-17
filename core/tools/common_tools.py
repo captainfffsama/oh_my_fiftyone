@@ -311,17 +311,18 @@ def get_embedding(
         with fo.ProgressBar(total=len(dataset),
                             start_msg="模型检测进度:",
                             complete_msg="检测完毕") as pb:
-            with model as m:
-                deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
-                with futures.ThreadPoolExecutor(10) as exec:
-                    tasks = [
-                        exec.submit(deal_one, sample, m) for sample in dataset
-                    ]
-                    for task in pb(futures.as_completed(tasks)):
-                        sample, objs = task.result()
+            with dataset.save_context() as context:
+                with model as m:
+                    deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
+                    with futures.ThreadPoolExecutor(5) as exec:
+                        tasks = [
+                            exec.submit(deal_one, sample, m) for sample in dataset
+                        ]
+                        for task in pb(futures.as_completed(tasks)):
+                            sample, objs = task.result()
 
-                        sample[save_field] = objs
-                        sample.save()
+                            sample[save_field] = objs
+                            context.save(sample)
     else:
         pass
 
