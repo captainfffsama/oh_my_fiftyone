@@ -308,7 +308,7 @@ def fol_det_nms(
     return fol.Detections(detections=r)
 
 
-def _export_one_sample_anno(sample, save_dir, backup_dir=None):
+def _export_one_sample_anno(sample, save_dir, backup_dir=None,export_classes: Optional[list] = None):
     result = {}
     need_export_map = {
         "data_source": "data_source",
@@ -336,6 +336,8 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None):
     dets = get_sample_field(sample, "ground_truth")
     if dets:
         for det in dets.detections:
+            if export_classes is not None and det.label not in export_classes:
+                continue
             obj = {}
             obj["name"] = det.label
             obj["pose"] = "Unspecified"
@@ -399,7 +401,7 @@ def _export_one_sample(
     exporter.export_sample(image_path, label, metadata=metadata)
 
     if get_anno:
-        _export_one_sample_anno(sample, save_dir)
+        _export_one_sample_anno(sample, save_dir,export_classes)
 
 
 def return_now_time():

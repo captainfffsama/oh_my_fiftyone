@@ -30,6 +30,7 @@ def export_anno_file(
     save_dir: str,
     dataset: Optional[focd.Dataset] = None,
     backup_dir: Optional[str] = None,
+    export_classes: Optional[List[str]] = None
 ):
     """导出数据集的anno文件到 save_dir
 
@@ -37,6 +38,7 @@ def export_anno_file(
         save_dir (str): 保存anno的目录
         dataset (focd.Dataset,optional): 需要导出的数据集,若没有就用全局的数据集
         backup_dir (str,optional) = None: 设置anno备份的目录,若不设置为None就不备份
+        export_classes (list,optional) = None: 导出的类别,默认为None将导出所有类别
     """
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -52,7 +54,7 @@ def export_anno_file(
             os.mkdir(backup_dir)
     with futures.ThreadPoolExecutor(48) as exec:
         tasks = [
-            exec.submit(_export_one_sample_anno, sample, save_dir, backup_dir)
+            exec.submit(_export_one_sample_anno, sample, save_dir, backup_dir,export_classes)
             for sample in dataset
         ]
 
