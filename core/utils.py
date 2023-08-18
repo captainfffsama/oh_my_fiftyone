@@ -401,7 +401,7 @@ def _export_one_sample(
     exporter.export_sample(image_path, label, metadata=metadata)
 
     if get_anno:
-        _export_one_sample_anno(sample, save_dir,export_classes)
+        _export_one_sample_anno(sample, save_dir,export_classes=export_classes)
 
 
 def return_now_time():
