@@ -111,7 +111,7 @@ def parse_xml_info(xml_path):
             if obj_name not in obj_info.keys():
                 obj_info[obj_name] = []
             obj_info[obj_name].append((xmin, ymin, xmax, ymax))
-    except AttributeError as e:
+    except Exception as e:
         logging.critical("{} xml is wrong".format(xml_path))
         print("{} is wrong".format(xml_path))
         raise e

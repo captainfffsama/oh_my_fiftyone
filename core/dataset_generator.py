@@ -202,6 +202,8 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     if not os.path.exists(back_dir):
         os.makedirs(back_dir)
     exporter = SGCCGameDatasetExporter(export_dir=dst_dir)
+    import_error = []
+
     with exporter:
         with futures.ThreadPoolExecutor(32) as exec:
             tasks=[exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr,import_data_cls,back_dir) for img_path in imgs_path]
@@ -211,7 +213,15 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
                     dynamic_ncols=True,
                     colour="green",
                 ):
-                new_imgs_path.append(task.result())
+
+                try:
+                    new_img_path=task.result()
+                except Exception as e:
+                    new_img_path=None
+                    import_error.append((e,traceback.format_exc(limit=-1)))
+                    continue
+                if new_img_path:
+                    new_imgs_path.append(new_img_path)
 
     update_dataset(exist_dataset,update_imgs_asbase=True,sample_path_list=new_imgs_path)
 
@@ -221,3 +231,8 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
 
     imgslist2dataview(new_imgs_path,exist_dataset).tag_samples(str(datetime.now())+"import")
 
+    if import_error:
+        logging.critical("=================CRIRICAL==================")
+        for i in import_error:
+            logging.critical(i[-1])
+        print("same error happened in import,please check {}".format(logging_path))
