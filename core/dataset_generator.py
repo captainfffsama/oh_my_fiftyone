@@ -127,12 +127,12 @@ def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,impor
             ni_all_classes=set(import_data_cls)
         else:
             ni_all_classes=set([x.label for x in ni_s_label])
-            
+
         final_label=[]
         for idx,i in enumerate(ni_s_label):
             if i.label in ni_all_classes:
                 final_label.append(i)
-        
+
         for idx,i in enumerate(e_s_label):
             if i.label not in ni_all_classes:
                 final_label.append(i)
@@ -198,7 +198,7 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     new_imgs_path=[]
 
 
-    back_dir="/tmp/dataset_maneger_bak/"+return_now_time()
+    back_dir="/tmp/dataset_manager_bak/"+return_now_time()
     if not os.path.exists(back_dir):
         os.makedirs(back_dir)
     exporter = SGCCGameDatasetExporter(export_dir=dst_dir)

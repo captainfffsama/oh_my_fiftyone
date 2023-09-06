@@ -91,9 +91,9 @@ def parse_xml_info(xml_path):
     """
     assert os.path.exists(xml_path), "{0} does not exist!".format(xml_path)
 
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
     try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
         img_name = root.find("filename").text
         img_width = int(root.find("size/width").text)
         img_height = int(root.find("size/height").text)
