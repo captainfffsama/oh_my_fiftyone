@@ -472,53 +472,49 @@ def duplicate_det(
 
                         if current_query_sample.id not in sselected:
                             all_dup_51_sample_id.add(current_query_sample.id)
-                            s.dataset.select(
-                                current_query_sample.id).tag_samples("dup")
+                            current_query_sample_datasetview = s.dataset.select(
+                                current_query_sample.id)
+                            current_query_sample_datasetview.tag_samples("dup")
                             similar_sample_51_id = list(need_check_51_ids)[0]
 
-                            s.dataset.select(
-                                current_query_sample.id
-                            ).set_values(
+                            current_query_sample_datasetview.set_values(
                                 "similar_img",
                                 [key_dataset[similar_sample_51_id].filepath],
                             )
-                            s.dataset.select(
-                                current_query_sample.id).set_values(
-                                    "similar_img_score",
-                                    [
-                                        need_check_samples_map[
-                                            similar_sample_51_id][1]
-                                    ],
-                                )
-                            s.dataset.select(
-                                current_query_sample.id).set_values(
-                                    "similar_img_method", [similar_method])
+                            current_query_sample_datasetview.set_values(
+                                "similar_img_score",
+                                [
+                                    need_check_samples_map[
+                                        similar_sample_51_id][1]
+                                ],
+                            )
+                            current_query_sample_datasetview.set_values(
+                                "similar_img_method", [similar_method])
+                            current_query_sample_datasetview.save()
                     else:
                         sselected = set(s.selected)
                         dup_51_ids = sselected
                         if current_query_sample.id in sselected:
                             all_dup_51_sample_id.add(current_query_sample.id)
-                            s.dataset.select(
-                                current_query_sample.id).tag_samples("dup")
+                            current_query_sample_datasetview = s.dataset.select(
+                                current_query_sample.id)
+                            current_query_sample_datasetview.tag_samples("dup")
                             similar_sample_51_id = list(need_check_51_ids)[0]
 
-                            s.dataset.select(
-                                current_query_sample.id
-                            ).set_values(
+                            current_query_sample_datasetview.set_values(
                                 "similar_img",
                                 [key_dataset[similar_sample_51_id].filepath],
                             )
-                            s.dataset.select(
-                                current_query_sample.id).set_values(
-                                    "similar_img_score",
-                                    [
-                                        need_check_samples_map[
-                                            similar_sample_51_id][1]
-                                    ],
-                                )
-                            s.dataset.select(
-                                current_query_sample.id).set_values(
-                                    "similar_img_method", [similar_method])
+                            current_query_sample_datasetview.set_values(
+                                "similar_img_score",
+                                [
+                                    need_check_samples_map[
+                                        similar_sample_51_id][1]
+                                ],
+                            )
+                            current_query_sample_datasetview.set_values(
+                                "similar_img_method", [similar_method])
+                            current_query_sample_datasetview.save()
                             dup_51_ids.remove(current_query_sample.id)
 
                         for sid in dup_51_ids:
@@ -548,6 +544,7 @@ def duplicate_det(
                                             key_sample_similar_score)
                     dataset_part.set_values("similar_img_method",
                                             key_sample_similar_method)
+                    dataset_part.save()
 
                 query_have_done_ids.add(current_query_sample.id)
 
