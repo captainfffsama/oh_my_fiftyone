@@ -88,6 +88,7 @@ def update_dataset(
                     ".JPEG",
                 ),
             )
+        # TODO: 这里效率需要优化
         with dataset.save_context() as context:
             for img_path in tqdm(
                     imgs_path,

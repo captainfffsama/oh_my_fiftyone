@@ -315,7 +315,7 @@ def get_embedding(
             with dataset.save_context() as context:
                 with model as m:
                     deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
-                    with futures.ThreadPoolExecutor(5) as exec:
+                    with futures.ThreadPoolExecutor(20) as exec:
                         tasks = [
                             exec.submit(deal_one, sample, m) for sample in dataset
                         ]
