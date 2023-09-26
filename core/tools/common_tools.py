@@ -278,6 +278,7 @@ def get_embedding(
     model: Optional[ProtoBaseDetection] = None,
     dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
     save_field: Optional[str] = "embedding",
+    workers: int = 20,
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
 
@@ -294,6 +295,16 @@ def get_embedding(
         save_field: Optional[str] = "embedding":
             用来保存结果的字段.默认是Sample的 embedding 字段
 
+        workers: int = 20:
+            embedding计算多线程数
+
+    Example:
+        >>> # 使用ChiebotObjectDetection,假设服务器的地址为 http://127.0.0.1:52007
+        >>> T.get_embedding(model_initargs={"host": "127.0.0.1:52007"})
+        >>> # 若使用其他模型,比如使用自带的dinov2
+        >>> import fiftyone.zoo as foz
+        >>> model = foz.load_zoo_model("dinov2-vits14-torch", ensure_requirements=False)
+        >>> T.get_embedding(model=model)
     """
     if dataset is None:
         s = WEAK_CACHE.get("session", None)
@@ -305,31 +316,38 @@ def get_embedding(
     dataset = optimize_view(dataset)
     if model is None:
         if model_initargs is None:
-            model_initargs = {}
+            logging.warning("model_initargs and model can not both None")
+            return
         model = ChiebotObjectDetection(**model_initargs)
 
-    if isinstance(model, ProtoBaseDetection):
-        with fo.ProgressBar(total=len(dataset),
-                            start_msg="模型检测进度:",
-                            complete_msg="检测完毕") as pb:
-            with dataset.save_context() as context:
-                with model as m:
-                    deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
-                    with futures.ThreadPoolExecutor(20) as exec:
-                        tasks = [
-                            exec.submit(deal_one, sample, m) for sample in dataset
-                        ]
-                        for task in pb(futures.as_completed(tasks)):
-                            sample, objs = task.result()
+    with fo.ProgressBar(total=len(dataset),
+                        start_msg="模型检测进度:",
+                        complete_msg="检测完毕") as pb:
 
-                            sample[save_field] = objs
-                            context.save(sample)
-                            del objs
-                            gc.collect()
+        if isinstance(model, ChiebotObjectDetection):
+            deal_one = lambda s, mm: (s, mm.embed(s.filepath, norm=True))
+        elif isinstance(model, ProtoBaseDetection):
+            deal_one = lambda s, mm: (s, mm.embed(s.filepath))
+        else:
+            deal_one = lambda s, mm: (
+                s,
+                mm.embed(
+                    cv2.imread(
+                        s.filepath, cv2.IMREAD_IGNORE_ORIENTATION | cv2.
+                        IMREAD_COLOR)))
+        with dataset.save_context() as context:
+            with model as m:
+                with futures.ThreadPoolExecutor(workers) as exec:
+                    tasks = [
+                        exec.submit(deal_one, sample, m) for sample in dataset
+                    ]
+                    for task in pb(futures.as_completed(tasks)):
+                        sample, objs = task.result()
 
-    else:
-        pass
-
+                        sample[save_field] = objs
+                        context.save(sample)
+                        del objs
+                        gc.collect()
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
@@ -462,10 +480,7 @@ def tag_chiebot_sample(
             else:
                 content = set(content)
             content |= tags
-            sample.set_field(KEY,
-                             tuple(content),
-                             validate=False,
-                             dynamic=True)
+            sample.set_field(KEY, tuple(content), validate=False, dynamic=True)
         else:
             sample.set_field(KEY, tuple(tags), validate=False, dynamic=True)
 
@@ -515,7 +530,4 @@ def untag_chiebot_sample(
             else:
                 content = set(content)
             content -= tags
-            sample.set_field(KEY,
-                             tuple(content),
-                             validate=False,
-                             dynamic=True)
+            sample.set_field(KEY, tuple(content), validate=False, dynamic=True)

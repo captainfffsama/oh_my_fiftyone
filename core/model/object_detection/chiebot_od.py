@@ -45,11 +45,12 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
         return super().__exit__(exc_type, exc_value, trace)
 
     def predict(self, img: Union[np.ndarray, str]) -> focl.Detections:
+        imgbase64 = img2base64(img)
+        # FIXME: 这里返回的时候归一化图片结果时,图片是忽略exif旋转信息
         if isinstance(img, str):
             img = cv2.imread(img,
                              cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
         h, w = img.shape[:2]
-        imgbase64 = img2base64(img)
         req = dldetection_pb2.DlRequest()
         req.imdata = imgbase64
         req.type = self.model_type
@@ -106,7 +107,9 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
         """
         return self.embed(self._last_embedding_img)
 
-    def embed(self, img: Union[np.ndarray, str],norm:bool=False) -> np.ndarray:
+    def embed(self,
+              img: Union[np.ndarray, str],
+              norm: bool = True) -> np.ndarray:
         """Generates an embedding for the given data.
 
         Subclasses can override this method to increase efficiency, but, by
@@ -123,21 +126,17 @@ class ChiebotObjectDetection(ProtoBaseDetection, FOCMDefaultSetBase,
         """
         # pylint: disable=no-member
         self._last_embedding_img = img
-        if isinstance(img, str):
-            img = cv2.imread(img,
-                             cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
-
-        h, w = img.shape[:2]
         imgbase64 = img2base64(img)
+
         req = dldetection_pb2.DlEmbeddingRequest()
         req.imdata = imgbase64
         req.imsize.extend(self._e_imsize)
         response = self.stub.DlEmbeddingGet(req)
 
-        result=tensor_proto2np(response).flatten()
+        result = tensor_proto2np(response).flatten()
         if norm:
-            result=(result-result.mean())/result.std()
-            return result/np.linalg.norm(result)
+            result = (result - result.mean()) / result.std()
+            return result / np.linalg.norm(result)
         return result
 
     def embed_all(self, imgs):
