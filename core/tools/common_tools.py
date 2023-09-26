@@ -404,16 +404,20 @@ def find_similar_img(
             model_initargs = {"host": "127.0.0.1:52007"}
         model = ChiebotObjectDetection(**model_initargs)
 
-    img_embed = None
     if isinstance(model, ProtoBaseDetection):
-        with model as m:
-            img_embed = m.embed(image, norm=True)
-    else:
         pass
-    if img_embed is None:
-        logging.error("generate img failed")
-        print("generate img failed")
-        return
+    else:
+        if isinstance(image, str):
+            image=cv2.imread(
+                image, cv2.IMREAD_IGNORE_ORIENTATION | cv2.
+                IMREAD_COLOR)
+    with model as m:
+        img_embed = m.embed(image)
+
+    # if img_embed is None:
+    #     logging.error("generate img failed")
+    #     print("generate img failed")
+    #     return
 
     search_results = qc_client.search(
         collection_name=qdrant_collection_name,
