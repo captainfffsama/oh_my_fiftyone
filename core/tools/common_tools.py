@@ -228,6 +228,7 @@ def model_det(
 
         model (Optional[ProtoBaseDetection], optional):
             用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
+            字段使用参见 T.get_embedding
 
         dataset (Optional[Union[fo.Dataset,fo.DatasetView]], optional):
             同之前. Defaults to None.
