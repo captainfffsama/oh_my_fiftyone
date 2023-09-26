@@ -336,21 +336,22 @@ def duplicate_det(
             "similar_method must in cosine, dotproduct, euclidean,similar_method fix to cosine"
         )
         similar_method = "cosine"
-    if query_dataset.dataset_name != key_dataset.dataset_name:
-        logging.error("query_dataset and key_dataset must in same dataset")
-        return []
 
-    CURRENT_DATASET: focd.Dataset = focd.load_dataset(
-        query_dataset.dataset_name)
-    if CURRENT_DATASET != s.dataset:
-        logging.error("current session dataset is not {}".format(
-            CURRENT_DATASET.name))
-        return []
+    if query_dataset is not None and key_dataset is not None:
+        if query_dataset.dataset_name != key_dataset.dataset_name:
+            logging.warning(
+                "query_dataset and key_dataset must be in the same dataset")
+            return
 
     if query_dataset is None:
+        CURRENT_DATASET: focd.Dataset=s.dataset
         query_dataset_ids = set(CURRENT_DATASET.values("id"))
     else:
+        CURRENT_DATASET: focd.Dataset = focd.load_dataset(
+            query_dataset.dataset_name)
         query_dataset_ids = set(query_dataset.values("id"))
+
+    print("current dataset is {}".format(CURRENT_DATASET.name))
 
     query_dataset_ids = query_dataset_ids - set(
         CURRENT_DATASET.match_tags("dup").values("id"))
@@ -479,13 +480,11 @@ def duplicate_det(
 
                     show_51_ids = [current_query_sample.id] + need_check_51_ids
 
+                    time.sleep(0.5)
                     s.view = CURRENT_DATASET.select(show_51_ids, ordered=True)
 
                     t2 = prompt(
-                        "\n 是否完成非重复标记?  \
-                        \n输入y将所有标记记为非重复, \
-                        输入t将所有标记记为重复, \
-                        输入e将所有标记记为非重复并退出 [y/t/e]:",
+                        "\n 是否完成非重复标记?\n输入y将所有标记记为非重复,输入t将所有标记记为重复,输入e将所有标记记为非重复并退出 [y/t/e]:",
                         validator=valida,
                         completer=WordCompleter(["y", "t", "e"]),
                         default=check_default_input,
