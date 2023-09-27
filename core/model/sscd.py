@@ -11,7 +11,10 @@ from typing import Union, List
 from concurrent import futures
 import pathlib
 import gc
+from multiprocessing import Queue
+from copy import deepcopy
 
+import torch.multiprocessing as tmp
 import torch
 from torchvision import transforms
 import numpy as np
@@ -21,6 +24,24 @@ import fiftyone.core.models as focm
 
 from .object_detection import FOCMDefaultSetBase
 
+def model_infer_process(sq:Queue,rq:Queue,ckpt_path: str, device: str):
+    model = torch.jit.load(ckpt_path, map_location=device)
+    model.eval()
+    rq.put("model init done!")
+    while True:
+        sender:torch.Tensor=sq.get()
+        if sender=='exit':
+            del model
+            gc.collect()
+            torch.cuda.empty_cache()
+            return
+
+        img=sender
+        img_clone=img.clone().to(device)
+        embedding: torch.Tensor = model(img_clone)[0, :]
+        del img
+        result=embedding.detach().cpu().numpy()
+        rq.put(result)
 
 # From: https://arxiv.org/abs/2202.10261
 class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
@@ -43,21 +64,32 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
             std=[0.229, 0.224, 0.225],
         )
         self.transform = transforms.Compose([
-            transforms.Resize(288),
             transforms.ToTensor(),
+            transforms.Resize(288),
             normalize,
         ])
         super().__init__()
 
     def __enter__(self):
-        self.model = torch.jit.load(self.ckpt_path, map_location=self.device)
+        self.sq=Queue(5)
+        self.rq=Queue(5)
+        self.infer_process=tmp.Process(target=model_infer_process,args=(self.sq,self.rq,self.ckpt_path,self.device))
+        self.infer_process.start()
+        revice=self.rq.get()
+        print(revice)
+        del revice
         return self
 
     def __exit__(self, exc_type, exc_value, trace):
-        # self.model.cpu()
-        # del self.model
-        # gc.collect()
-        # torch.cuda.empty_cache()
+        self.sq.put("exit")
+        self.infer_process.join()
+        if self.infer_process.is_alive():
+            try:
+                self.infer_process.close()
+            except Exception as e:
+                print(e)
+        self.sq.close()
+        self.rq.close()
         return super().__exit__(exc_type, exc_value, trace)
 
     def predict(self, img: Union[np.ndarray, str]) -> np.ndarray:
@@ -65,10 +97,11 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
             img = cv2.imread(img,
                              cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = torch.tensor(img)
         img = self.transform(img).unsqueeze(0)
-        embedding: torch.Tensor = self.model(img)[0, :]
-        result=embedding.detach().cpu().numpy()
+        self.sq.put(img)
+        revice=self.rq.get()
+        result=deepcopy(revice)
+        del revice
         return result
 
     def predict_all(
