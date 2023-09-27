@@ -2,6 +2,7 @@
 
 [toc]
 
+![logo](./doc/logo.png)
 # Introduction
 
 基于 fiftyone 写的一个管理数据的小东西
