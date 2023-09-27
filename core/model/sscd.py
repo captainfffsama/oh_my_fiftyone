@@ -24,24 +24,33 @@ import fiftyone.core.models as focm
 
 from .object_detection import FOCMDefaultSetBase
 
-def model_infer_process(sq:Queue,rq:Queue,ckpt_path: str, device: str):
+
+def model_infer_process(sq: Queue, rq: Queue, ckpt_path: str, device: str):
     model = torch.jit.load(ckpt_path, map_location=device)
+    transform = transforms.Compose([
+        transforms.Resize(288),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225]),
+    ])
+    toTensor = transforms.ToTensor()
     model.eval()
     rq.put("model init done!")
     while True:
-        sender:torch.Tensor=sq.get()
-        if sender=='exit':
+        sender: np.ndarray  = sq.get()
+        if isinstance(sender,str):
             del model
             gc.collect()
             torch.cuda.empty_cache()
             return
 
-        img=sender
-        img_clone=img.clone().to(device)
+        img_clone = deepcopy(sender)
+        del sender
+        img_clone = toTensor(img_clone).to(device)
+        img_clone = transform(img_clone).unsqueeze(0)
         embedding: torch.Tensor = model(img_clone)[0, :]
-        del img
-        result=embedding.detach().cpu().numpy()
+        result = embedding.detach().cpu().numpy()
         rq.put(result)
+
 
 # From: https://arxiv.org/abs/2202.10261
 class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
@@ -49,7 +58,8 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
     def __init__(self, ckpt_path: str = None, device: str = "cuda:0"):
         if ckpt_path is None:
             save_dir = pathlib.Path(torch.hub.get_dir())
-            save_dir = save_dir.parent.joinpath("fiftyone_models").joinpath("sscd")
+            save_dir = save_dir.parent.joinpath("fiftyone_models").joinpath(
+                "sscd")
             if not save_dir.exists():
                 save_dir.mkdir(parents=True)
             ckpt_path = save_dir.joinpath("sscd_imagenet_mixup.torchscript.pt")
@@ -59,23 +69,16 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
         self.ckpt_path = str(ckpt_path)
         self.device = device
 
-        normalize = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        )
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize(288),
-            normalize,
-        ])
         super().__init__()
 
     def __enter__(self):
-        self.sq=Queue(5)
-        self.rq=Queue(5)
-        self.infer_process=tmp.Process(target=model_infer_process,args=(self.sq,self.rq,self.ckpt_path,self.device))
+        self.sq = Queue(5)
+        self.rq = Queue(5)
+        self.infer_process = tmp.Process(target=model_infer_process,
+                                         args=(self.sq, self.rq,
+                                               self.ckpt_path, self.device))
         self.infer_process.start()
-        revice=self.rq.get()
+        revice = self.rq.get()
         print(revice)
         del revice
         return self
@@ -97,10 +100,9 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
             img = cv2.imread(img,
                              cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = self.transform(img).unsqueeze(0)
         self.sq.put(img)
-        revice=self.rq.get()
-        result=deepcopy(revice)
+        revice = self.rq.get()
+        result = deepcopy(revice)
         del revice
         return result
 
@@ -188,4 +190,3 @@ class SSCD(FOCMDefaultSetBase, focm.EmbeddingsMixin):
             results = [x for x in exec.map(self.embed, imgs)]
 
         return np.stack(results)
-
