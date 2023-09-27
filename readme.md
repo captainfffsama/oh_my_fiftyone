@@ -8,7 +8,7 @@
 
 # requirements
 
-- fiftyone >=0.21.6
+- fiftyone >=0.22.0
 - ipython
 - loguru
 - pid
@@ -38,6 +38,7 @@
 # 使用说明
 
 参见[使用说明](./doc/user_guide.md)
+
 
 # TODO
 

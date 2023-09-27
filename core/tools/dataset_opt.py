@@ -344,7 +344,7 @@ def duplicate_det(
             return
 
     if query_dataset is None:
-        CURRENT_DATASET: focd.Dataset=s.dataset
+        CURRENT_DATASET: focd.Dataset = s.dataset
         query_dataset_ids = set(CURRENT_DATASET.values("id"))
     else:
         CURRENT_DATASET: focd.Dataset = focd.load_dataset(
@@ -574,17 +574,21 @@ def duplicate_det(
             # 保存结果
             print("将去重结果批量写入到数据库中...")
             # FIXME: 这里设计orderd 可能很吃内存
-            dup_samples_view = CURRENT_DATASET.select(
-                dup_tmp_r.need_save_sample_ids, ordered=True)
-            dup_samples_view.tag_samples("dup")
+            if dup_tmp_r.need_save_sample_ids:
+                dup_samples_view = CURRENT_DATASET.select(
+                    dup_tmp_r.need_save_sample_ids, ordered=True)
+                dup_samples_view.tag_samples("dup")
 
-            dup_samples_view.set_values("similar_img",
-                                        dup_tmp_r.need_save_sample_simi_imgs)
-            dup_samples_view.set_values("similar_img_score",
-                                        dup_tmp_r.need_save_sample_simi_score)
-            dup_samples_view.set_values("similar_img_method",
-                                        dup_tmp_r.need_save_sample_simi_method)
-            dup_samples_view.save()
+                if dup_tmp_r.need_save_sample_simi_imgs:
+                    dup_samples_view.set_values(
+                        "similar_img", dup_tmp_r.need_save_sample_simi_imgs)
+                    dup_samples_view.set_values(
+                        "similar_img_score",
+                        dup_tmp_r.need_save_sample_simi_score)
+                    dup_samples_view.set_values(
+                        "similar_img_method",
+                        dup_tmp_r.need_save_sample_simi_method)
+                dup_samples_view.save()
             print("清理去重工作")
             similar_key_dealer.cleanup()
             if brain_key in key_dataset.list_brain_runs():
