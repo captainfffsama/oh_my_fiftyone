@@ -17,6 +17,10 @@
 - grpc >= 1.51.0
 - grpc-tools>=1.51.0
 - qdrant-client
+ ## Optional requirements
+torch
+
+安装torch的情况下可以使用自带模型或者是新加的嵌入模型
 
 # 需要注意的设定字段
 

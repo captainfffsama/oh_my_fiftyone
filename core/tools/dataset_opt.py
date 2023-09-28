@@ -252,24 +252,19 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
         else:
             dataset = s.dataset
     dataset = optimize_view(dataset)
-    if brain_key in dataset.list_brain_runs():
-        previous_brain_run = dataset.load_brain_results(brain_key)
-        if previous_brain_run:
-            previous_brain_run.cleanup()
-        # if isinstance(previous_brain_run,
-        #               fob.internal.core.qdrant.QdrantSimilarityIndex):
-        #     collections_name = [
-        #         i.name for i in
-        #         previous_brain_run.client.get_collections().collections
-        #     ]
-        #     print("将清除所有qdrant collection")
-        #     for i in collections_name:
-        #         previous_brain_run.client.delete_collection(i)
-        dataset.delete_brain_run(brain_key)
     if isinstance(dataset, focd.Dataset):
         qdrant_collection_name = dataset.name + "_sim"
     else:
         qdrant_collection_name = dataset.dataset_name + "_sim"
+    if brain_key in dataset.list_brain_runs():
+        previous_brain_run = dataset.load_brain_results(brain_key)
+        if previous_brain_run:
+            previous_brain_run.cleanup()
+        qc_url = fob.brain_config.similarity_backends.get("qdrant", {}).get(
+            "url", "127.0.0.1:6333")
+        qc_client = qc.QdrantClient(url=qc_url)
+        qc_client.delete_collection(qdrant_collection_name)
+        dataset.delete_brain_run(brain_key)
     result = fob.compute_similarity(dataset,
                                     embeddings="embedding",
                                     backend="qdrant",
@@ -613,3 +608,4 @@ def clean_all_brain_qdrant():
     qc_collection_names = qc_client.get_collections()
     qc_client.delete_collection(qc_collection_names)
     s.refresh()
+
