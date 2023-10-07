@@ -48,9 +48,8 @@ def launch_dataset(_d11: focd.Dataset):
                             remote=True,
                             auto=True)
     WEAK_CACHE["session"] = session
-    dataset: DatasetClass = lambda session=session: session.dataset
     embed(header=logo.word,colors="linux")
-    # session.wait()
+    session.wait()
     session.close()
 
 
