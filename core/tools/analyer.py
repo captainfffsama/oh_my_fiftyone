@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-10-07 10:39:14
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-09 09:34:29
+@LastEditTime: 2023-10-09 09:41:34
 @FilePath: /oh_my_fiftyone/core/tools/analyer.py
 @Description:
 '''
@@ -48,7 +48,10 @@ class DatasetAnalyer:
 
     Example:
     >>> analyer=T.DatasetAnalyer()
+    >>> # 在线观看
     >>> analyer.show()
+    >>> # 导出表格到test.xlsx
+    >>> analyer.export2excel("test.xlsx")
     """
 
     def __init__(self,
@@ -242,4 +245,10 @@ class DatasetAnalyer:
         self.dash_app.run(host="0.0.0.0", port="51511")
 
     def export2excel(self, save_path):
+        """
+        Exports the data in the `pd_data` attribute to an Excel file at the specified `save_path`.
+
+        Args:
+            save_path: The path where the Excel file will be saved.
+        """
         self.pd_data.to_excel(save_path, index=False)

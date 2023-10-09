@@ -10,13 +10,15 @@ import json
 import shutil
 from datetime import datetime
 
+import numpy as np
 import cv2
 import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.labels as fol
 import fiftyone.core.view as focv
 from PIL import Image
-import numpy as np
+import requests
+
 from core.logging import logging
 
 def optimize_view(dataset:Union[fo.Dataset,fo.DatasetView])->Union[fo.Dataset,fo.DatasetView]:
@@ -414,3 +416,14 @@ def return_now_time():
         now_time.minute,
         now_time.second,
     )
+
+
+def get_latest_version(repo_owner, repo_name):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+    response = requests.get(url)
+    if response.status_code == 200:
+        latest_release = response.json()
+        version = latest_release['tag_name']
+        return version
+    else:
+        return None

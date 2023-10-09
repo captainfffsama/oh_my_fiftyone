@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from collections import defaultdict
 import json
+from packaging.version import Version
 
 from pid.decorator import pidfile
 from IPython import embed
@@ -26,7 +27,7 @@ from prompt_toolkit.validation import Validator
 from prompt_toolkit.formatted_text import to_formatted_text, HTML
 
 
-from core.utils import timeblock, fol_det_nms
+from core.utils import timeblock, fol_det_nms,get_latest_version
 from core import __version__
 import core.tools as T
 from core.cache import WEAK_CACHE
@@ -370,9 +371,20 @@ def merge_label():
                 metadata = fo.ImageMetadata.build_for(img_path)
                 exporter.export_sample(img_path, objs, metadata=metadata)
 
+def check_version() -> str:
+    remote_version=get_latest_version("captainfffsama","oh_my_fiftyone")
+    if remote_version is None:
+        return u"未检测到最新版本,可能是网络问题"
+    else:
+        if Version(remote_version) > Version(__version__):
+            return u"检测到最新版本{}，建议更新最新版本!".format(remote_version)
+        else:
+            return ""
+
 
 @pidfile(pidname="dataset_manager")
 def main():
+    info_show=check_version()
     prompt_session = PromptSession()
     function_map = {
         "1": add_data2exsist_dataset,
@@ -391,6 +403,7 @@ def main():
         main_win_show =  to_formatted_text(HTML("""
 ===========================================
 {}
+{}
               当前版本:{}
             你想对数据集做些什么？
 1. 添加新的数据到已有数据集   6. 合并标注
@@ -399,7 +412,7 @@ def main():
 4. 删除已有数据集
 5. 处理数据
 ===========================================
-        请输入要做事情的编号:""".format(logo.cat,__version__)))
+        请输入要做事情的编号:""".format(info_show,logo.cat,__version__)))
 
         main_win_select = prompt_session.prompt(
             main_win_show,
