@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-10-07 10:39:14
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-09 10:38:59
+@LastEditTime: 2023-10-09 11:04:52
 @FilePath: /oh_my_fiftyone/core/tools/analyer.py
 @Description:
 '''
@@ -47,11 +47,11 @@ class DatasetAnalyer:
     """用于分析数据集
 
     Example:
-    >>> analyer=T.DatasetAnalyer()
-    >>> # 在线观看
-    >>> analyer.show()
-    >>> # 导出表格到test.xlsx
-    >>> analyer.export2excel("test.xlsx")
+        >>> analyer=T.DatasetAnalyer()
+        >>> # 在线观看
+        >>> analyer.show()
+        >>> # 导出表格到test.xlsx
+        >>> analyer.export2excel("test.xlsx")
     """
 
     def __init__(self,

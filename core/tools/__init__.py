@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-08 16:34:27
+@LastEditTime: 2023-10-09 10:40:04
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -23,6 +23,7 @@
     - find_similar_img: 寻找相似图片
     - tag_chiebot_sample: 更新chiebot_sample_tags
     - untag_chiebot_sample: 删除chiebot_sample_tags中字段
+    - DatasetAnalyer: 数据集分析(需要额外安装包支持)
 '''
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det,clean_all_brain_qdrant

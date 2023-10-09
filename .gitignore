@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.list
+test.xlsx
 
 # C extensions
 *.so

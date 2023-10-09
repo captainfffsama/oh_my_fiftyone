@@ -345,7 +345,7 @@ def get_embedding(
                         sample[save_field] = objs
                         context.save(sample)
                         del objs
-            gc.collect()
+                        gc.collect()
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()

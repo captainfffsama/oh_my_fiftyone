@@ -16,7 +16,18 @@
 
 详细见[requirements_full.txt](./requirements_full.txt)
 
+# 最新进展
+0.22 版本发布,新增 `T.DataAnalyer` 功能,在线分析目标检测数据集情况,使用示例如下:
 
+```python
+dataset=session.dataset.limit(10)
+classes=["dog","cat"]
+analyer=T.DataAnalyer(dataset,classes)
+# 在线查看
+analyer.show()
+# 导出表格到 test.xlsx
+analyer.export2excel("test.xlsx")
+```
 
 # 需要注意的设定字段
 

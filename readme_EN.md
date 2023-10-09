@@ -1,19 +1,34 @@
-[中文](./readme.md)   [English](./readme_EN.md)
 
+[中文](./readme.md)  [English](./readme_EN.md)
+
+[toc]
+
+![logo](./doc/logo.png)
 # Introduction
 
-A small tool based on fiftyone for managing data.
+A small tool for managing data based on fiftyone.
 
-# Requirements
+# requirements
 See [requirements.txt](./requirements.txt) for details.
-
 ## Optional requirements
-- torch (for using built-in models or new embedded models)
+- torch (to use built-in models or newly added embedded models)
 - dash (for dataset analysis)
 - diskcache (for dataset analysis)
 
 See [requirements_full.txt](./requirements_full.txt) for details.
 
+# Latest Progress
+Version 0.22 released, added `T.DataAnalyer` feature to analyze object detection datasets online. Example usage:
+
+```python
+dataset = session.dataset.limit(10)
+classes = ["dog", "cat"]
+analyer = T.DataAnalyer(dataset, classes)
+# View online
+analyer.show()
+# Export table to test.xlsx
+analyer.export2excel("test.xlsx")
+``````
 # Important fields to note
 
 ## Dataset fields and sample fields
@@ -36,6 +51,7 @@ See [requirements_full.txt](./requirements_full.txt) for details.
 
 See [User Guide](./doc/user_guide.md) for usage instructions.
 
+
 # TODO
 
 - [X] Record additional information.
@@ -51,4 +67,4 @@ See [User Guide](./doc/user_guide.md) for usage instructions.
 # BUG
 
 - [ ] tqdm gets stuck in busy IO situations.
-- [ ] Session disconnects when rebuilding datasets, requiring a restart of the entire program.
+- [ ] Session disconnects when rebuilding datasets, requiring a restart of the entire program
