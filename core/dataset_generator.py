@@ -25,11 +25,7 @@ from core.exporter import SGCCGameDatasetExporter
 from core.utils import get_all_file_path, timeblock,fol_det_nms,_export_one_sample,return_now_time
 from core.logging import logging, logging_path
 from core.tools import update_dataset,add_dataset_fields_by_txt,imgslist2dataview
-from core.cfg import BAK_DIR
-
-
-SAMPLE_MAX_CACHE = 60000
-
+from core.cfg import BAK_DIR,SAMPLE_MAX_CACHE
 
 
 def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
