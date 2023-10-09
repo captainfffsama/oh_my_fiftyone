@@ -1,42 +1,32 @@
 [中文](./readme.md)   [English](./readme_EN.md)
 
-[toc]
-
-![logo](./doc/logo.png)
 # Introduction
 
-A small tool for managing data based on FiftyOne.
+A small tool based on fiftyone for managing data.
 
 # Requirements
+See [requirements.txt](./requirements.txt) for details.
 
-- FiftyOne >= 0.22.0
-- ipython
-- loguru
-- pid
-- piexif
-- grpc >= 1.51.0
-- grpc-tools >= 1.51.0
-- qdrant-client
+## Optional requirements
+- torch (for using built-in models or new embedded models)
+- dash (for dataset analysis)
+- diskcache (for dataset analysis)
 
-## Optional Requirements
+See [requirements_full.txt](./requirements_full.txt) for details.
 
-torch
+# Important fields to note
 
-When torch is installed, you can use built-in models or newly added embedding models.
-
-# Important Configuration Fields
-
-## Dataset Fields and Sample Fields
+## Dataset fields and sample fields
 
 - `embedding`: Stores sample embeddings.
 - `ground_truth`: Stores sample annotations.
 - `model_predict`: Stores model prediction results.
-- `chiebot_ID`: Original ID for competition samples.
-- `xml_md5`: XML MD5 for the current sample.
-- `img_quality`: Sample image quality, currently not in use.
-- `data_source`: Sample data source.
+- `chiebot_ID`: Original ID of the sample for the competition.
+- `xml_md5`: MD5 hash of the current sample's XML.
+- `img_quality`: Quality of the sample image (not currently used).
+- `data_source`: Source of the sample data.
 - `chiebot_sample_tags`: Similar to sample tags, used to label samples.
-- `additions`: Some other miscellaneous information.
+- `additions`: Stores other miscellaneous information.
 
 ## brain_key
 
@@ -44,21 +34,21 @@ When torch is installed, you can use built-in models or newly added embedding mo
 
 # Usage Instructions
 
-Refer to the [User Guide](./doc/user_guide.md).
+See [User Guide](./doc/user_guide.md) for usage instructions.
 
 # TODO
 
 - [X] Record additional information.
-- [ ] Customize the backend proto to support tools like labelimg, labelme, labelhomo, etc.
-- [X] Optimize the usage of some tools APIs.
+- [ ] Customize backend proto to support tools like labelimg, labelme, labelhomo.
+- [X] Optimize the usage of some tool APIs.
 - [X] Support RPC models.
-- [X] Export selected data with one click.
-- [ ] Address multi-user operation issues.
+- [X] One-click export of selected data.
+- [ ] Multi-user operation issues.
 - [X] Support multiple export formats for object detection.
-- [ ] Optimize data import/export and ensure consistency with the original data.
-- [X] Image-based search.
+- [ ] Optimize annotation data import/export and consistency with the original.
+- [X] Image search by image.
 
 # BUG
 
-- [ ] In busy I/O situations, tqdm may hang.
-- [ ] When rebuilding a dataset, the session disconnects and requires a complete program restart.
+- [ ] tqdm gets stuck in busy IO situations.
+- [ ] Session disconnects when rebuilding datasets, requiring a restart of the entire program.

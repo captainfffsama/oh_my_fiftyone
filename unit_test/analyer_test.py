@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-10-07 10:48:16
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-08 19:05:36
+@LastEditTime: 2023-10-09 10:03:55
 @FilePath: /oh_my_fiftyone/unit_test/analyer_test.py
 @Description:
 '''
@@ -33,6 +33,7 @@ class Analyer_datasetTestCase(unittest.TestCase):
         # aa._build_figure()
         # aa._generate_class_graph("wcgz")
         aa.show()
+        aa.export2excel("test.xlsx")
 
 
 

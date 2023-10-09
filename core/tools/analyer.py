@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-10-07 10:39:14
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-09 09:41:34
+@LastEditTime: 2023-10-09 10:38:59
 @FilePath: /oh_my_fiftyone/core/tools/analyer.py
 @Description:
 '''
@@ -88,9 +88,9 @@ class DatasetAnalyer:
             html.H1(children=u'数据集结果分析', style={'textAlign': 'center'}),
             dash_table.DataTable(data=self.pd_data.to_dict('records'),
                                  page_size=10),
-            html.H1(children=u'图片数量图', style={'textAlign': 'center'}),
+            html.H1(children=u'图片数量', style={'textAlign': 'center'}),
             dcc.Graph(figure=img_num_fig),
-            html.H1(children=u'gt框数量图', style={'textAlign': 'center'}),
+            html.H1(children=u'gt框数量', style={'textAlign': 'center'}),
             dcc.Graph(figure=box_num_fig),
             dcc.Dropdown(self.pd_data[u"类别名"],
                          self._show_classes[0],
@@ -213,6 +213,8 @@ class DatasetAnalyer:
         rbwh_fig = px.density_heatmap(class_pd_dataframe,
                                       x="rbw",
                                       y="rbh",
+                                      nbinsx=100,
+                                      nbinsy=100,
                                       marginal_x="histogram",
                                       marginal_y="histogram")
         wh_ratio_fig = px.histogram(class_pd_dataframe,
@@ -221,22 +223,32 @@ class DatasetAnalyer:
         rpos_fig = px.density_heatmap(class_pd_dataframe,
                                       x="rcx",
                                       y="rcy",
+                                      nbinsx=100,
+                                      nbinsy=100,
                                       marginal_x="histogram",
                                       marginal_y="histogram")
         rel_area = px.histogram(class_pd_dataframe, x="rel_area", nbins=100)
         abs_area = px.histogram(class_pd_dataframe, x="abs_area", nbins=100)
 
         div = html.Div(children=[
-            html.Label(u"相对宽高热力图"),
-            dcc.Graph(figure=rbwh_fig),
-            html.Label(u"宽高比图"),
+            html.Div([
+                html.Div([
+                    html.H3(children=u"相对面积",style={'textAlign': 'center'}),
+                    dcc.Graph(figure=rel_area),
+                    html.H3(children=u"相对宽高热力",style={'textAlign':'center'}),
+                    dcc.Graph(figure=rbwh_fig),
+                ], style={'padding': 10, 'flex': 1}),
+                html.Div([
+                    html.H3(children=u"绝对面积",style={'textAlign': 'center'}),
+                    dcc.Graph(figure=abs_area),
+                    html.H3(children=u"目标框相对位置热力",style={'textAlign': 'center'}),
+                    dcc.Graph(figure=rpos_fig),
+                ], style={'padding': 10, 'flex': 1})
+            ],
+            style={'display': 'flex',
+                'flex-direction': 'row'}),
+            html.H3(children=u"宽高比",style={'textAlign': 'center'}),
             dcc.Graph(figure=wh_ratio_fig),
-            html.Label(u"目标框相对位置热力图"),
-            dcc.Graph(figure=rpos_fig),
-            html.Label(u"相对面积图"),
-            dcc.Graph(figure=rel_area),
-            html.Label(u"绝对面积图"),
-            dcc.Graph(figure=abs_area),
         ])
         return div
 

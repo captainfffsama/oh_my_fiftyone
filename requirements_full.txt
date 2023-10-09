@@ -12,4 +12,4 @@ tqdm
 torch
 dash
 diskcache
-
+openpyxl
