@@ -16,7 +16,6 @@ import time
 import gc
 
 import os
-import json
 from concurrent import futures
 
 import fiftyone as fo
@@ -30,8 +29,7 @@ import cv2
 import numpy as np
 import qdrant_client as qc
 
-from core.utils import get_sample_field, md5sum, get_all_file_path, optimize_view
-from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
+from core.utils import get_all_file_path, optimize_view
 from core.logging import logging
 
 from core.cache import WEAK_CACHE

@@ -2,37 +2,20 @@
 '''
 @Author: 198-server
 @Date: 2023-02-27 15:09:54
-@LastEditors: captainsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-03-02 09:49:41
-@FilePath: /dataset_manager/core/logging.py
+@LastEditors: captainfffsama tuanzhangsama@outlook.com
+@LastEditTime: 2023-10-08 16:31:19
+@FilePath: /oh_my_fiftyone/core/logging.py
 @Description:
 '''
-import datetime
+import os
 from loguru import logger
+from .cfg import LOG_DIR
 
 logger.remove(handler_id=None)
-logging_path='/tmp/dataset_manager_{}.log'.format(datetime.date.today())
-logger.add(logging_path,enqueue=True)
+logging_path=os.path.join(LOG_DIR,"oh_my_fiftyone_{time}.log")
+logger.add(sink=logging_path,
+            rotation='300 KB',  # 按文件大小切割日志
+            retention='30 days',  # 只保留30天的日志
+            encoding='utf-8',  # 编码
+            level='DEBUG')
 logging=logger
-
-
-# import logging
-
-# class levelFilter(logging.Filter):
-#     def filter(self, record):
-#         if record.levelno < logging.WARNING:
-#             return True
-#         return False
-
-# logger = logging.getLogger()
-# log_formatter=logging.Formatter('%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-# fh=logging.FileHandler(filename='/tmp/dataset_manager_{}.log'.format(datetime.date.today()),mode='a')
-# fh.setLevel(logging.WARNING)
-# fh.setFormatter(log_formatter)
-
-# ch=logging.StreamHandler()
-# ch.setLevel(logging.INFO)
-# ch.addFilter(levelFilter())
-
-# logger.addHandler(fh)
-# logger.addHandler(ch)

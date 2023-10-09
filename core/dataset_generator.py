@@ -25,6 +25,7 @@ from core.exporter import SGCCGameDatasetExporter
 from core.utils import get_all_file_path, timeblock,fol_det_nms,_export_one_sample,return_now_time
 from core.logging import logging, logging_path
 from core.tools import update_dataset,add_dataset_fields_by_txt,imgslist2dataview
+from core.cfg import BAK_DIR
 
 
 SAMPLE_MAX_CACHE = 60000
@@ -198,7 +199,7 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
     new_imgs_path=[]
 
 
-    back_dir="/tmp/dataset_manager_bak/"+return_now_time()
+    back_dir=os.path.join(BAK_DIR,return_now_time())
     if not os.path.exists(back_dir):
         os.makedirs(back_dir)
     exporter = SGCCGameDatasetExporter(export_dir=dst_dir)

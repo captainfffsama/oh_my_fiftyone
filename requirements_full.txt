@@ -9,3 +9,7 @@ grpcio-tools
 grpcio
 opencv-python-headless
 tqdm
+torch
+dash
+diskcache
+

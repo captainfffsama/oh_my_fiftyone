@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-07-28 10:59:30
+@LastEditTime: 2023-10-08 16:34:27
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -27,3 +27,10 @@
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det,clean_all_brain_qdrant
 from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding, find_similar_img,tag_chiebot_sample,untag_chiebot_sample
+
+try:
+    import dash
+    from .analyer import DatasetAnalyer
+    import diskcache
+except ModuleNotFoundError:
+    print("dash or diskcache is not installed, DatasetAnalyer cannot be loaded.")

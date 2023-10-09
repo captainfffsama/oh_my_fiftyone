@@ -30,7 +30,7 @@ import fiftyone.core.session as focs
 import fiftyone.brain as fob
 from fiftyone import ViewField as F
 
-from core.utils import get_sample_field, md5sum, get_all_file_path, timeblock, optimize_view
+from core.utils import md5sum, get_all_file_path, optimize_view
 from core.logging import logging
 
 from core.cache import WEAK_CACHE

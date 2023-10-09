@@ -8,19 +8,15 @@
 基于 fiftyone 写的一个管理数据的小东西
 
 # requirements
+详细见[requirements.txt](./requirements.txt)
+## Optional requirements
+- torch (安装torch的情况下可以使用自带模型或者是新加的嵌入模型)
+- dash (数据集分析使用)
+- diskcache (数据集分析使用)
 
-- fiftyone >=0.22.0
-- ipython
-- loguru
-- pid
-- piexif
-- grpc >= 1.51.0
-- grpc-tools>=1.51.0
-- qdrant-client
- ## Optional requirements
-torch
+详细见[requirements_full.txt](./requirements_full.txt)
 
-安装torch的情况下可以使用自带模型或者是新加的嵌入模型
+
 
 # 需要注意的设定字段
 

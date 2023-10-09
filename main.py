@@ -23,7 +23,8 @@ from prompt_toolkit.completion import WordCompleter, PathCompleter
 from prompt_toolkit import print_formatted_text as print
 from prompt_toolkit.shortcuts import yes_no_dialog
 from prompt_toolkit.validation import Validator
-from prompt_toolkit import print_formatted_text, HTML
+from prompt_toolkit.formatted_text import to_formatted_text, HTML
+
 
 from core.utils import timeblock, fol_det_nms
 from core import __version__
@@ -380,24 +381,25 @@ def main():
         "4": delete_exsist_dataset,
         "5": preprocess_data,
         "6": merge_label,
+        "7": exit
     }
     while True:
         main_vali = Validator.from_callable(
             partial(number_in_ranger, min=1, max=len(function_map.keys())),
             error_message="瞎输啥编号呢,用退格删了重输",
         )
-        main_win_show = HTML("""
+        main_win_show =  to_formatted_text(HTML("""
 ===========================================
 {}
               当前版本:{}
             你想对数据集做些什么？
 1. 添加新的数据到已有数据集   6. 合并标注
-2. 查看已有数据集
+2. 查看已有数据集           7. 退出
 3. 建立新的数据集
 4. 删除已有数据集
 5. 处理数据
 ===========================================
-        请输入要做事情的编号:""".format(logo.cat,__version__))
+        请输入要做事情的编号:""".format(logo.cat,__version__)))
 
         main_win_select = prompt_session.prompt(
             main_win_show,
