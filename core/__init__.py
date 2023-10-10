@@ -1,1 +1,1 @@
-__version__="v0.22rc1"
+__version__="v0.22"

@@ -249,20 +249,17 @@ def model_det(
         model = ChiebotObjectDetection(**model_initargs)
 
     if isinstance(model, ProtoBaseDetection):
-        with fo.ProgressBar(total=len(dataset),
-                            start_msg="模型检测进度:",
-                            complete_msg="检测完毕") as pb:
-            with model as m:
-                deal_one = lambda s, mm: (s, mm.predict(s.filepath))
-                with futures.ThreadPoolExecutor(10) as exec:
-                    tasks = [
-                        exec.submit(deal_one, sample, m) for sample in dataset
-                    ]
-                    for task in pb(futures.as_completed(tasks)):
-                        sample, objs = task.result()
+        with dataset.save_context() as context:
+            with fo.ProgressBar(total=len(dataset),
+                                start_msg="模型检测进度:",
+                                complete_msg="检测完毕") as pb:
+                with model as m:
+                    for sample in dataset:
+                        r=m.predict(sample.filepath)
+                        sample[save_field] = r
+                        context.save(sample)
 
-                        sample[save_field] = objs
-                        sample.save()
+    #TODO: 其他模型支持待补
     else:
         pass
 
@@ -270,6 +267,14 @@ def model_det(
     if session is not None:
         session.refresh()
 
+
+def _infer(sample, model):
+    if isinstance(model, ProtoBaseDetection):
+        result=model.embed(sample.filepath)
+    else:
+        img=cv2.imread(sample.filepath,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
+        result=model.embed(img)
+    return result
 
 @print_time_deco
 def get_embedding(
@@ -323,32 +328,17 @@ def get_embedding(
                         start_msg="模型检测进度:",
                         complete_msg="检测完毕") as pb:
 
-        if isinstance(model, ProtoBaseDetection):
-            deal_one = lambda s, mm: (s, mm.embed(s.filepath))
-        else:
-            deal_one = lambda s, mm: (s,
-                                      mm.embed(
-                                          cv2.imread(
-                                              s.filepath, cv2.
-                                              IMREAD_IGNORE_ORIENTATION
-                                              | cv2.IMREAD_COLOR)))
         with dataset.save_context() as context:
             with model as m:
-                with futures.ThreadPoolExecutor(workers) as exec:
-                    tasks = [
-                        exec.submit(deal_one, sample, m)
-                        for sample in dataset
-                    ]
-                    for task in pb(futures.as_completed(tasks)):
-                        sample, objs = task.result()
+                for sample in pb(dataset):
+                    r=_infer(sample, m)
+                    sample[save_field]=r
+                    context.save(sample)
 
-                        sample[save_field] = objs
-                        context.save(sample)
-                        del objs
-                        gc.collect()
     session = WEAK_CACHE.get("session", None)
     if session is not None:
         session.refresh()
+
 
 
 @print_time_deco
