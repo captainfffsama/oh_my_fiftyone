@@ -272,7 +272,9 @@ def generate_qdrant_idx(dataset: Optional[focd.Dataset] = None,
                                     metric="cosine",
                                     collection_name=qdrant_collection_name,
                                     **kwargs)
-    s.refresh()
+    s = WEAK_CACHE.get("session", None)
+    if s is not None:
+        s.refresh()
     return result
 
 
