@@ -13,3 +13,4 @@ torch
 dash
 diskcache
 openpyxl
+dash[diskcache]

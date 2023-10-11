@@ -297,22 +297,22 @@ class DupTmpResult:
 
 @print_time_deco
 def duplicate_det(
-    query_dataset: Optional[focv.DatasetView] = None,
+    query_dataset: Optional[Union[focv.DatasetView, focd.Dataset]] = None,
     similar_thr: float = 0.985,
     check_thr: float = 0.955,
     similar_method: str = "cosine",
-    key_dataset: Optional[focv.DatasetView] = None,
+    key_dataset: Optional[Union[focv.DatasetView, focd.Dataset]] = None,
     query_have_done_ids: Optional[List[str]] = None,
     check_default_input: str = "y",
 ) -> List[str]:
     """
     注释是gpt写的,我懒
     Args:
-    query_dataset (Optional[focv.DatasetView]): 要执行重复检测的数据集。默认为None。
+    query_dataset (Optional[focv.DatasetView, focd.Dataset]): 要执行重复检测的数据集。默认为None。
     similar_thr (float): 将两个样本视为重复的相似度阈值。默认为0.985。
     check_thr (float): 将搜索结果视为潜在重复的分数阈值。默认为0.955。
     similar_method (str): 计算样本之间相似度的方法。必须是"cosine"、"dotproduct"或"euclidean"之一。默认为"cosine"。
-    key_dataset (Optional[focv.DatasetView]): 用作重复检测的关键数据集。默认为None。
+    key_dataset (Optional[focv.DatasetView, focd.Dataset]): 用作重复检测的关键数据集。默认为None。
     query_have_done_ids (Optional[List[str]]): 已经处理过的查询样本的ID列表。默认为None。
     check_default_input: str= "y": 人工检查时的默认输入。默认为"y"。
 
@@ -335,7 +335,11 @@ def duplicate_det(
         similar_method = "cosine"
 
     if query_dataset is not None and key_dataset is not None:
-        if query_dataset.dataset_name != key_dataset.dataset_name:
+        query_dataset_name = query_dataset.dataset_name if isinstance(
+            query_dataset, focv.DatasetView) else query_dataset.name
+        key_dataset_name = key_dataset.dataset_name if isinstance(
+            key_dataset, focv.DatasetView) else key_dataset.name
+        if query_dataset_name != key_dataset_name:
             logging.warning(
                 "query_dataset and key_dataset must be in the same dataset")
             return
@@ -344,8 +348,11 @@ def duplicate_det(
         CURRENT_DATASET: focd.Dataset = s.dataset
         query_dataset_ids = set(CURRENT_DATASET.values("id"))
     else:
-        CURRENT_DATASET: focd.Dataset = focd.load_dataset(
-            query_dataset.dataset_name)
+        if isinstance(query_dataset,focv.DatasetView):
+            CURRENT_DATASET: focd.Dataset = focd.load_dataset(
+                query_dataset.dataset_name)
+        else:
+            CURRENT_DATASET: focd.Dataset = query_dataset
         query_dataset_ids = set(query_dataset.values("id"))
 
     print("current dataset is {}".format(CURRENT_DATASET.name))
@@ -610,4 +617,3 @@ def clean_all_brain_qdrant():
     qc_collection_names = qc_client.get_collections()
     qc_client.delete_collection(qc_collection_names)
     s.refresh()
-

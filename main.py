@@ -21,7 +21,7 @@ from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
 
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
-from prompt_toolkit import print_formatted_text as print
+from prompt_toolkit import print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog
 from prompt_toolkit.validation import Validator
 from prompt_toolkit.formatted_text import to_formatted_text, HTML
