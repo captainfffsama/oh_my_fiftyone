@@ -17,18 +17,32 @@ See [requirements.txt](./requirements.txt) for details.
 
 See [requirements_full.txt](./requirements_full.txt) for details.
 
-# Latest Progress
-Version 0.22 released, added `T.DataAnalyer` feature to analyze object detection datasets online. Example usage:
+# Latest Updates
+## Version 0.22.1
+Version 0.22.1 Released
+### What's New
+Added a new way to import labels. Now, when importing new data, you can choose 'new,' which means using the newly provided annotations as the final annotations.
+### Bug Fixes
+1. Fixed an issue that could cause the loss of some boxes when importing data using the 'merge' and 'nms' methods.
+
+## Version 0.22
+Version 0.22 Released
+### What's New
+Added the `T.DataAnalyzer` feature for online analysis of object detection datasets. Here's how to use it:
 
 ```python
-dataset = session.dataset.limit(10)
-classes = ["dog", "cat"]
-analyer = T.DataAnalyer(dataset, classes)
+dataset=session.dataset.limit(10)
+classes=["dog","cat"]
+analyzer=T.DataAnalyzer(dataset,classes)
 # View online
-analyer.show()
-# Export table to test.xlsx
-analyer.export2excel("test.xlsx")
-``````
+analyzer.show()
+# Export the table to test.xlsx
+analyzer.export2excel("test.xlsx")
+```
+For a detailed history of updates, please refer to [changelog.md](doc/changlog.md).
+
+
+
 # Important fields to note
 
 ## Dataset fields and sample fields
