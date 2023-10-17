@@ -1,4 +1,4 @@
-[中文](./readme.md)   [English](./readme_EN.md)
+[中文](./README.md)   [English](./README.en.md)
 
 [toc]
 
