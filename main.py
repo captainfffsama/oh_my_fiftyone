@@ -13,12 +13,11 @@ from IPython import embed
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.brain as fob
-from fiftyone.core.session import Session,close_app
+from fiftyone.core.session import Session, close_app
 from fiftyone import ViewField as F
 from fiftyone.utils.coco import COCODetectionDatasetExporter
 from fiftyone.utils.yolo import YOLOv4DatasetExporter, YOLOv5DatasetExporter
 from core.exporter.sgccgame_dataset_exporter import SGCCGameDatasetExporter
-
 
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.completion import WordCompleter, PathCompleter
@@ -27,8 +26,7 @@ from prompt_toolkit.shortcuts import yes_no_dialog
 from prompt_toolkit.validation import Validator
 from prompt_toolkit.formatted_text import to_formatted_text, HTML
 
-
-from core.utils import timeblock, fol_det_nms,get_latest_version
+from core.utils import timeblock, fol_det_nms, get_latest_version
 from core import __version__
 import core.tools as T
 from core.cache import WEAK_CACHE
@@ -51,7 +49,7 @@ def launch_dataset(_d11: focd.Dataset):
                             remote=True,
                             auto=True)
     WEAK_CACHE["session"] = session
-    embed(header=logo.word,colors="linux")
+    embed(header=logo.word, colors="linux")
     # session.wait(1)
     close_app()
 
@@ -60,14 +58,54 @@ def number_in_ranger(text: str, min=0, max=100):
     return text.isdigit() and min <= int(text) <= max
 
 
+def _get_merge_label_args() -> dict:
+
+    def validat_number(input):
+        try:
+            n = float(input)
+        except Exception as e:
+            return False
+        return 0 <= n <= 1
+
+    v2 = Validator.from_callable(validat_number, error_message="瞎写啥")
+    iou_thr = prompt("请设置合并的IOU阈值,范围在[0,1]:", validator=v2, default="0.7")
+    iou_thr = float(iou_thr)
+    import_data_cls = set([])
+    return {"merge_iou_thr": iou_thr, "import_data_cls": import_data_cls}
+
+
+def _get_overlap_label_args():
+    iou_thr = 0.7
+    ok_flag = False
+    import_data_cls = set([])
+    while not ok_flag:
+        import_data_cls_str: str = prompt(
+            """请输入导入样本包含的类别,\",\"分隔,Enter确认终止输入,
+若为空,则相同样本的导入类别以标签文件中有的类别为主:""", )
+        print(import_data_cls_str.strip().split(","))
+        import_data_cls = set(
+            [x for x in import_data_cls_str.strip().split(",") if x])
+        ok_flag = yes_no_dialog(title="确认导入样本类别",
+                                text="导入样本类别有:{}".format(
+                                    ",".join(import_data_cls))).run()
+
+        if ok_flag:
+            break
+    return {"merge_iou_thr": iou_thr, "import_data_cls": import_data_cls}
+
+
+def _get_new_label_args():
+    return {"merge_iou_thr": 0.7, "import_data_cls": ()}
+
+
 def add_data2exsist_dataset():
     prompt_session = PromptSession()
-    text = prompt_session.prompt("请输入数据路径:",
-                                 completer=PathCompleter(),
-                                 complete_in_thread=True,
-                                 validator=None)
+    data_path = prompt_session.prompt("请输入数据路径:",
+                                      completer=PathCompleter(),
+                                      complete_in_thread=True,
+                                      validator=None)
     exist_dataset = fo.list_datasets()
-    text = os.path.abspath(text)
+    data_path = os.path.abspath(data_path)
 
     if exist_dataset:
         valida = Validator.from_callable(lambda x: x in exist_dataset,
@@ -89,59 +127,30 @@ def add_data2exsist_dataset():
         dataset = fo.load_dataset(import_dataset_name)
         if t2 == "n":
             with timeblock():
-                new_dataset = generate_dataset(text, persistent=False)
+                new_dataset = generate_dataset(data_path, persistent=False)
                 new_dataset.tag_samples(str(datetime.now()) + "import")
 
             dataset.merge_samples(new_dataset)
             dataset.save()
             print("dataset merge done")
         else:
-            flag_map = {"overlap": "覆盖", "merge": "合并"}
+            flag_map = {"overlap": "覆盖", "merge": "合并", "new": "完全使用传入标签替换"}
             v1 = Validator.from_callable(lambda x: x in flag_map.keys(),
                                          error_message="瞎选什么啊")
-            t3 = prompt_session.prompt("相同样本是覆盖(overlap)还是合并(merge):",
-                                       validator=v1,
-                                       completer=WordCompleter(
-                                           flag_map.keys()),
-                                       default="merge")
+            merge_method = prompt_session.prompt(
+                "相同样本是覆盖(overlap),合并(merge)还是完全使用新标签替换(new):",
+                validator=v1,
+                completer=WordCompleter(flag_map.keys()),
+                default="merge")
+            method_map = {
+                "overlap": _get_overlap_label_args,
+                "merge": _get_merge_label_args,
+                "new": _get_new_label_args,
+            }
+            method_args = method_map[merge_method]()
 
-            if "merge" == t3:
-
-                def validat_number(input):
-                    try:
-                        n = float(input)
-                    except Exception as e:
-                        return False
-                    return 0 <= n <= 1
-
-                v2 = Validator.from_callable(validat_number,
-                                             error_message="瞎写啥")
-                iou_thr = prompt_session.prompt("请设置合并的IOU阈值,范围在[0,1]:",
-                                                validator=v2,
-                                                default="0.7")
-                iou_thr = float(iou_thr)
-                import_data_cls = set([])
-            else:
-                iou_thr = 0.7
-                ok_flag = False
-                import_data_cls = set([])
-                while not ok_flag:
-                    import_data_cls_str: str =prompt(
-                        """请输入导入样本包含的类别,\",\"分隔,Enter确认终止输入,
-若为空,则相同样本的导入类别以标签文件中有的类别为主:""", )
-                    print(import_data_cls_str.strip().split(","))
-                    import_data_cls = set([
-                        x for x in import_data_cls_str.strip().split(",") if x
-                    ])
-                    ok_flag = yes_no_dialog(
-                        title="确认导入样本类别",
-                        text="导入样本类别有:{}".format(",".join(import_data_cls))).run()
-
-                    if ok_flag:
-                        break
-
-            import_new_sample2exist_dataset(dataset, text, t3, iou_thr,
-                                            import_data_cls)
+            import_new_sample2exist_dataset(dataset, data_path, merge_method,
+                                            **method_args)
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:
@@ -372,8 +381,9 @@ def merge_label():
                 metadata = fo.ImageMetadata.build_for(img_path)
                 exporter.export_sample(img_path, objs, metadata=metadata)
 
+
 def check_version() -> str:
-    remote_version=get_latest_version("captainfffsama","oh_my_fiftyone")
+    remote_version = get_latest_version("captainfffsama", "oh_my_fiftyone")
     if remote_version is None:
         return u"未检测到最新版本,可能是网络问题"
     else:
@@ -385,7 +395,7 @@ def check_version() -> str:
 
 @pidfile(pidname="dataset_manager")
 def main():
-    info_show=check_version()
+    info_show = check_version()
     prompt_session = PromptSession()
     function_map = {
         "1": add_data2exsist_dataset,
@@ -401,7 +411,8 @@ def main():
             partial(number_in_ranger, min=1, max=len(function_map.keys())),
             error_message="瞎输啥编号呢,用退格删了重输",
         )
-        main_win_show =  to_formatted_text(HTML("""
+        main_win_show = to_formatted_text(
+            HTML("""
 ===========================================
 {}
 {}
@@ -413,7 +424,7 @@ def main():
 4. 删除已有数据集
 5. 处理数据
 ===========================================
-        请输入要做事情的编号:""".format(info_show,logo.cat,__version__)))
+        请输入要做事情的编号:""".format(info_show, logo.cat, __version__)))
 
         main_win_select = prompt_session.prompt(
             main_win_show,

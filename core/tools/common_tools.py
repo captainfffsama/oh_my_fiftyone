@@ -21,6 +21,7 @@ from concurrent import futures
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.core.view as focv
+import fiftyone.core.sample as focs
 import fiftyone.brain as fob
 from tqdm import tqdm
 from PIL import Image
@@ -268,12 +269,12 @@ def model_det(
         session.refresh()
 
 
-def _infer(sample, model):
-    if isinstance(model, ProtoBaseDetection):
-        result=model.embed(sample.filepath)
-    else:
-        img=cv2.imread(sample.filepath,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
-        result=model.embed(img)
+def _infer(sample:Union[np.ndarray,str,focs.Sample,focs.SampleView], model):
+    if isinstance(sample,focs.Sample) or isinstance(sample,focs.SampleView):
+        sample=sample.filepath
+    if isinstance(sample,str):
+        sample=cv2.imread(sample,cv2.IMREAD_IGNORE_ORIENTATION|cv2.IMREAD_COLOR)
+    result=model.embed(sample)
     return result
 
 @print_time_deco
@@ -282,7 +283,6 @@ def get_embedding(
     model: Optional[ProtoBaseDetection] = None,
     dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None,
     save_field: Optional[str] = "embedding",
-    workers: int = 20,
 ):
     """使用模型检测数据集,并将结果存到sample的model_predic 字段
 
@@ -298,9 +298,6 @@ def get_embedding(
 
         save_field: Optional[str] = "embedding":
             用来保存结果的字段.默认是Sample的 embedding 字段
-
-        workers: int = 20:
-            embedding计算多线程数
 
     Example:
         >>> # 使用ChiebotObjectDetection,假设服务器的地址为 http://127.0.0.1:52007
@@ -357,7 +354,7 @@ def find_similar_img(
 
         model_initargs: (Optional[dict],optinal):
             用于初始化默认模型实例的参数,对于ChiebotObjectDetection就是模型类型
-            默认参数是dict(host="127.0.0.1:52007")
+            比如:dict(host="127.0.0.1:52007")
 
         model (Optional[ProtoBaseDetection], optional):
             用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
@@ -389,17 +386,12 @@ def find_similar_img(
 
     if model is None:
         if model_initargs is None:
-            model_initargs = {"host": "127.0.0.1:52007"}
+            logging.error("model or model_initarg can not be None both")
+            return
         model = ChiebotObjectDetection(**model_initargs)
 
-    if isinstance(model, ProtoBaseDetection):
-        pass
-    else:
-        if isinstance(image, str):
-            image = cv2.imread(
-                image, cv2.IMREAD_IGNORE_ORIENTATION | cv2.IMREAD_COLOR)
     with model as m:
-        img_embed = m.embed(image)
+        img_embed = _infer(image,m)
 
     # if img_embed is None:
     #     logging.error("generate img failed")

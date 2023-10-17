@@ -138,7 +138,7 @@ def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,impor
         _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
 
         return os.path.join(dst_dir,os.path.basename(img_path))
-    else:
+    elif "merge" == flag:
         need_import_sample=generate_sgcc_sample(img_path)
         exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
 
@@ -158,6 +158,14 @@ def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,impor
         _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
 
         return os.path.join(dst_dir,os.path.basename(img_path))
+    elif "new" == flag:
+        need_import_sample=generate_sgcc_sample(img_path)
+        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
+        exist_sample.ground_truth=need_import_sample.ground_truth
+        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+
+        return os.path.join(dst_dir,os.path.basename(img_path))
+
 
 def _copy_sample(img_path,dst_dir) -> str:
     xml_path=os.path.splitext(img_path)[0]+".xml"

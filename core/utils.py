@@ -243,7 +243,7 @@ def NMS(boxes, iou_thr=0.5, sort_by="area"):
     y1 = boxes[:, 1]
     x2 = boxes[:, 2]
     y2 = boxes[:, 3]
-    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    area = (x2 - x1) * (y2 - y1)
     if sort_by == "area":
         # small to large
         idxs = np.argsort(area)[::-1]
@@ -257,8 +257,8 @@ def NMS(boxes, iou_thr=0.5, sort_by="area"):
         yy1 = np.maximum(y1[i], y1[idxs[:last]])
         xx2 = np.minimum(x2[i], x2[idxs[:last]])
         yy2 = np.minimum(y2[i], y2[idxs[:last]])
-        w = np.maximum(0, xx2 - xx1 + 1)
-        h = np.maximum(0, yy2 - yy1 + 1)
+        w = np.maximum(0, xx2 - xx1)
+        h = np.maximum(0, yy2 - yy1)
         iou = (w * h) / (area[idxs[:last]] + area[i] - (w * h))
         idxs = np.delete(idxs, np.concatenate(([last], np.where(iou > iou_thr)[0])))
     return boxes[pick]
@@ -419,11 +419,14 @@ def return_now_time():
 
 
 def get_latest_version(repo_owner, repo_name):
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
-    response = requests.get(url)
-    if response.status_code == 200:
-        latest_release = response.json()
-        version = latest_release['tag_name']
-        return version
-    else:
+    try:
+        url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+        response = requests.get(url)
+        if response.status_code == 200:
+            latest_release = response.json()
+            version = latest_release['tag_name']
+            return version
+        else:
+            return None
+    except Exception as e:
         return None
