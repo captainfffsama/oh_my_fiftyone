@@ -13,6 +13,7 @@ from IPython import embed
 import fiftyone as fo
 import fiftyone.core.dataset as focd
 import fiftyone.brain as fob
+from fiftyone.core.session import Session,close_app
 from fiftyone import ViewField as F
 from fiftyone.utils.coco import COCODetectionDatasetExporter
 from fiftyone.utils.yolo import YOLOv4DatasetExporter, YOLOv5DatasetExporter
@@ -51,8 +52,8 @@ def launch_dataset(_d11: focd.Dataset):
                             auto=True)
     WEAK_CACHE["session"] = session
     embed(header=logo.word,colors="linux")
-    session.wait()
-    session.close()
+    # session.wait(1)
+    close_app()
 
 
 def number_in_ranger(text: str, min=0, max=100):
