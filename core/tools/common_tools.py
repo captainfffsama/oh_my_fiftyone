@@ -386,7 +386,7 @@ def find_similar_img(
     if s is None:
         logging.warning("no dataset in cache,do no thing")
         print("s is None")
-        return
+        return []
 
     if dataset is None:
         dataset=s.dataset
@@ -403,7 +403,7 @@ def find_similar_img(
         logging.warning("{} not exist".format(qdrant_collection_name))
         print("collection {} not exist".format(qdrant_collection_name))
         print(e)
-        return
+        return []
 
     if model is None:
         if model_initargs is None:
