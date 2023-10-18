@@ -8,7 +8,7 @@
 @Description:
 """
 
-from typing import Optional, Union, List
+from typing import Optional, Union, List,Tuple
 from pprint import pprint
 from datetime import datetime
 from functools import wraps
@@ -338,14 +338,17 @@ def get_embedding(
 
 
 
+# TODO:添加不同相似度方法支持
 @print_time_deco
 def find_similar_img(
     image: Union[str, np.ndarray],
     model_initargs: Optional[dict] = None,
     model: Optional[ProtoBaseDetection] = None,
+    dataset: Optional[Union[focd.Dataset,focv.DatasetView]]=None,
     qdrant_collection_name: Optional[str] = None,
     topk: int = 3,
-):
+    show: bool =True,
+) -> List[Tuple[str,float]]:
     """从数据库中查找相似图片
 
     Args:
@@ -359,11 +362,24 @@ def find_similar_img(
         model (Optional[ProtoBaseDetection], optional):
             用于检测模型实例. Defaults to None.默认使用ChiebotObjectDetection
 
+        dataset: Optional[Union[focd.Dataset,focv.DatasetView]]=None,
+            在哪些数据中找,若不写,那就是session.dataset
+
         qdrant_collection_name : Optional[str] = None:
-            qc数据库仓库名称,不写就默认是session.dataset.name + "_sim"
+            qc数据库仓库名称,不写就默认是dataset.name + "_sim"
 
         topk: int = 3:
             取最相似的多少个图片
+
+        show: bool = True:
+            是否在浏览器上显示相似的图片并在终端显示结果
+
+    Returns:
+        List[Tuple[str,float]]: 相似图片完整路径列表和相似度分数
+
+    Example:
+        >>> # 若要嵌入到其他脚本中应用,建议取消wrap
+        >>> find_simi_img=T.find_similar_img.__wrapper__
 
     """
     s: fo.Session = WEAK_CACHE.get("session", None)
@@ -371,11 +387,16 @@ def find_similar_img(
         logging.warning("no dataset in cache,do no thing")
         print("s is None")
         return
+
+    if dataset is None:
+        dataset=s.dataset
+
+    dataset_name = dataset.name if isinstance(dataset,focd.Dataset) else dataset.dataset_name
     qc_url = fob.brain_config.similarity_backends.get("qdrant", {}).get(
         "url", "127.0.0.1:6333")
     qc_client = qc.QdrantClient(url=qc_url)
     if qdrant_collection_name is None:
-        qdrant_collection_name = s.dataset.name + "_sim"
+        qdrant_collection_name = dataset_name + "_sim"
     try:
         qc_client.get_collection(qdrant_collection_name)
     except Exception as e:
@@ -408,14 +429,23 @@ def find_similar_img(
     tmp = [(qdrant_point.payload["sample_id"], qdrant_point.score)
            for qdrant_point in search_results]
     tmp.sort(key=lambda x: x[1], reverse=True)
-    print("===========================================")
+    if show:
+        print("===========================================")
     similar_imgs_id = []
+    file_socre_map={}
     for idx, x in enumerate(tmp):
-        print("{:3}---{} : {}".format(idx + 1, s.dataset[x[0]].filepath, x[1]))
+        if show:
+            print("{:3}---{} : {}".format(idx + 1, dataset[x[0]].filepath, x[1]))
         similar_imgs_id.append(x[0])
-    print("===========================================")
-    s.view = s.dataset.select(similar_imgs_id, ordered=True)
-    s.refresh()
+        file_socre_map[dataset[x[0]].filepath]=x[1]
+    if show:
+        print("===========================================")
+    simi_imgs_dv:focv.DatasetView=dataset.select(similar_imgs_id, ordered=True)
+    if show:
+        s.view = simi_imgs_dv
+        s.refresh()
+    simi_imgs_fp=simi_imgs_dv.values("filepath")
+    return [(x,file_socre_map[x]) for x in simi_imgs_fp]
 
 
 @print_time_deco
