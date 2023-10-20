@@ -259,6 +259,7 @@ def model_det(
                         r=m.predict(sample.filepath)
                         sample[save_field] = r
                         context.save(sample)
+                        pb.update(1)
 
     #TODO: 其他模型支持待补
     else:
