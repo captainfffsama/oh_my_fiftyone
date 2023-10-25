@@ -99,7 +99,7 @@ def preprocess(
             print("{} 解析失败,将不会生成anno")
 
     with futures.ThreadPoolExecutor(48) as exec:
-        tasks = [
+        tasks = (
             exec.submit(
                 preprocess_one,
                 img_path,
@@ -110,7 +110,7 @@ def preprocess(
                 anno_infos,
             )
             for img_path in imgs_path
-        ]
+        )
         for task in tqdm(
             futures.as_completed(tasks), total=len(imgs_path), desc="预处理进度:"
         ):

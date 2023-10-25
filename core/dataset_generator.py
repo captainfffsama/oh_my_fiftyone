@@ -62,10 +62,10 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
         dataset = fo.Dataset(name=name, overwrite=True)
 
         with futures.ThreadPoolExecutor() as exec:
-            tasks = [
+            tasks = (
                 exec.submit(generate_sgcc_sample, img_path, extra_attr)
                 for img_path in imgs_path
-            ]
+            )
             for idx, task in tqdm(
                 enumerate(futures.as_completed(tasks)),
                 total=len(imgs_path),
@@ -211,7 +211,7 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
 
     with exporter:
         with futures.ThreadPoolExecutor() as exec:
-            tasks=[exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr,import_data_cls,back_dir) for img_path in imgs_path]
+            tasks=(exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr,import_data_cls,back_dir) for img_path in imgs_path)
             for task in tqdm(futures.as_completed(tasks),
                     total=len(imgs_path),
                     desc="样本拷贝合并进度:",

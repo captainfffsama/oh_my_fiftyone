@@ -53,10 +53,10 @@ def export_anno_file(
         if not os.path.exists(backup_dir):
             os.mkdir(backup_dir)
     with futures.ThreadPoolExecutor(48) as exec:
-        tasks = [
+        tasks = (
             exec.submit(_export_one_sample_anno, sample, save_dir, backup_dir,export_classes)
             for sample in dataset
-        ]
+        )
 
         with fo.ProgressBar(total=len(dataset),
                             start_msg="anno导出进度:",
@@ -110,10 +110,10 @@ def export_sample(save_dir: str,
     with exporter:
         exporter.log_collection(dataset)
         with futures.ThreadPoolExecutor(48) as exec:
-            tasks = [
+            tasks = (
                 exec.submit(_export_one_sample, sample, exporter, get_anno,
                             save_dir,export_class,label_field) for sample in dataset
-            ]
+            )
             with fo.ProgressBar(total=len(dataset),
                                 start_msg="样本导出进度:",
                                 complete_msg="样本导出完毕") as pb:

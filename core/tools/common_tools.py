@@ -10,6 +10,7 @@
 
 from typing import Optional, Union, List,Tuple
 from pprint import pprint
+import weakref
 from datetime import datetime
 from functools import wraps
 import time
@@ -332,6 +333,14 @@ def get_embedding(
                     r=_infer(sample, m)
                     sample[save_field]=r
                     context.save(sample)
+                # get_infer=lambda sample,m:(weakref.proxy(sample),_infer(sample,m))
+                # with futures.ThreadPoolExecutor(2) as exec:
+                #     tasks=(exec.submit(get_infer, sample, m) for sample in dataset)
+                #     for task in pb(futures.as_completed(tasks)):
+                #         r=task.result()
+                #         print(r)
+                        # sample[save_field]=r
+                        # context.save(sample)
 
     session = WEAK_CACHE.get("session", None)
     if session is not None:

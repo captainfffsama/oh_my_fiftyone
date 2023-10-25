@@ -3,8 +3,8 @@
 @Author: captainfffsama
 @Date: 2023-04-14 14:18:20
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-04-18 14:15:20
-@FilePath: /dataset_manager/core/parse_label.py
+@LastEditTime: 2023-10-25 10:37:54
+@FilePath: /oh_my_fiftyone/core/parse_label.py
 @Description:
 '''
 from concurrent import futures
@@ -83,7 +83,7 @@ def _parse_voc(xml_list,exclude_classes) -> Dict[str,list]:
             total=len(xml_list), start_msg="标签文件解析进度:", complete_msg="解析完毕"
         ) as pb:
         with futures.ThreadPoolExecutor(48) as exec:
-            tasks=[exec.submit(deal_one, xml,exclude_classes) for xml in xml_list]
+            tasks=(exec.submit(deal_one, xml,exclude_classes) for xml in xml_list)
 
             for task in pb(futures.as_completed(tasks)):
                 name,label=task.result()
@@ -98,7 +98,7 @@ def _parse_yolo(txt_list,classes,exclude_classes) -> Dict[str,list]:
             total=len(txt_list), start_msg="标签文件解析进度:", complete_msg="解析完毕"
         ) as pb:
         with futures.ThreadPoolExecutor(48) as exec:
-            tasks=[exec.submit(deal_one,txt,classes,exclude_classes) for txt in txt_list]
+            tasks=(exec.submit(deal_one,txt,classes,exclude_classes) for txt in txt_list)
 
             for task in pb(futures.as_completed(tasks)):
                 name,label=task.result()
