@@ -14,3 +14,4 @@ dash
 diskcache
 openpyxl
 dash[diskcache]
+setproctitle
