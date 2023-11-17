@@ -18,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.view as focv
 from PIL import Image
 import requests
+from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from core.logging import logging
 
@@ -430,3 +431,21 @@ def get_latest_version(repo_owner, repo_name):
             return None
     except Exception as e:
         return None
+
+
+def split_data(filepath, split_ratio):
+    temp_test, temp_val = [], []
+    try:
+        temp_train, temp_test = train_test_split(filepath, train_size=split_ratio[0],
+                                                 test_size=round(1 - split_ratio[0], 5))
+        if len(split_ratio) == 3:
+            temp_val, temp_test = train_test_split(temp_test, train_size=round(split_ratio[1] / (1 - split_ratio[0]), 5),
+                                                   test_size=round(split_ratio[2] / (1 - split_ratio[0]), 5))
+    except:
+        if len(filepath) <= 6:
+            temp_train = filepath
+            return (temp_train, temp_val, temp_test)
+        else:
+            raise ValueError
+
+    return (temp_train, temp_val, temp_test)

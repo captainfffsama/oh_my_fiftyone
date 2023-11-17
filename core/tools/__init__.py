@@ -27,7 +27,7 @@
 '''
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det,clean_all_brain_qdrant
-from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding, find_similar_img,tag_chiebot_sample,untag_chiebot_sample
+from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding, find_similar_img,tag_chiebot_sample,untag_chiebot_sample, split_dataset
 
 try:
     import dash

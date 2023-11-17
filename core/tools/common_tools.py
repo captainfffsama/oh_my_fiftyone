@@ -7,7 +7,7 @@
 @FilePath: /dataset_manager/core/tools/common_tools.py
 @Description:
 """
-
+import copy
 from typing import Optional, Union, List,Tuple
 from pprint import pprint
 import weakref
@@ -15,7 +15,7 @@ from datetime import datetime
 from functools import wraps
 import time
 import gc
-
+from sklearn.model_selection import train_test_split
 import os
 from concurrent import futures
 
@@ -30,8 +30,9 @@ import piexif
 import cv2
 import numpy as np
 import qdrant_client as qc
+from fiftyone import ViewField as F
 
-from core.utils import get_all_file_path, optimize_view
+from core.utils import get_all_file_path, optimize_view, split_data
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
@@ -554,3 +555,102 @@ def untag_chiebot_sample(
                 content = set(content)
             content -= tags
             sample.set_field(KEY, tuple(content), validate=False, dynamic=True)
+
+@print_time_deco
+def split_dataset(
+    split_ratio: List[float],
+    tags: Optional[str] = None,
+    class_list: Optional[List[str]] = None,
+    force_overwrite: bool = False,
+    dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None
+):
+    """
+    :param split_ratio: 数据划分比例,比例相加必须为1，可输入三个（则自动划分训练、验证、测试），也可输入两个（则自动划分训练、测试），可输入整数也可输入小数
+    :param tags:  设定划分后的字段名称, 默认"auto"，即auto_train
+                  字符串_train、字符串_val、字符串_test
+    :param class_list: 按照给定的类别划分数据集，若class_list为None，则不考虑类别，直接暴力划分数据集
+    :param force_overwrite: False. 当划分数据分配的字段与存在的字段发生冲突时，是否强制覆盖已存在的字段
+                            True（请谨慎操作）, 直接清空一存在的冲突字段，将新划分后的数据写入该字段
+    :param dataset: An optional Dataset or DatasetView object representing
+                    the dataset on which the function will be applied.
+    :return:
+    """
+    if dataset is None:
+        s = WEAK_CACHE.get("session", None)
+        if s is not None:
+            dataset = s.dataset
+        else:
+            logging.warning("no dataset in cache,do no thing")
+            return
+
+    assert round(sum(split_ratio), 3) == 1, "the sum of split_ratio must be 1, 别把数据搞丢了"  # 0.7 + 0.1 = 0.899999
+    if isinstance(split_ratio, list):
+        assert len(split_ratio) <= 3, "len(split_ratio) > 3， 输入的很不河里"
+
+    dataset = optimize_view(dataset)
+    dataset_temp = copy.deepcopy(dataset)
+
+    split_train, split_val, split_test = [], [], []
+    # 按照给定类别划分数据集
+    if class_list:
+        for cls in tqdm(
+            class_list,
+            total=len(class_list),
+            desc="按类别划分进度:",
+            dynamic_ncols=True,
+            colour="green",
+    ):
+            cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
+            cls_path = cls_data.distinct('filepath')
+            if not cls_path:
+                continue
+            temp_train, temp_val, temp_test = split_data(cls_path, split_ratio)
+            dataset_temp = dataset_temp.exclude_by('filepath', cls_path)
+            split_train.extend(temp_train)
+            split_val.extend(temp_val)
+            split_test.extend(temp_test)
+        for id, path in enumerate([split_train, split_val, split_test]):
+            if id == 0:
+                other_data = dataset_temp.exclude_by('filepath', path)
+            else:
+                other_data = other_data.exclude_by('filepath', path)
+        other_path = other_data.distinct('filepath')
+        temp_train, temp_val, temp_test = split_data(other_path, split_ratio)
+        split_train.extend(temp_train)
+        split_val.extend(temp_val)
+        split_test.extend(temp_test)
+
+    # 粗鄙之人： 直接暴力划分
+    else:
+        filepath = dataset.distinct('filepath')
+        split_train, split_val, split_test = split_data(filepath, split_ratio)
+
+    sample_tag = tags if tags else "auto"
+    exists_tags = dataset.distinct('tags')
+    print('划分之后的训练集:{}、验证集:{}、测试集:{}'.format(len(split_train), len(split_val), len(split_test)))
+    if sample_tag + '_train' in exists_tags or sample_tag + '_test' in exists_tags:
+        if force_overwrite:
+            print('给你一次反悔的机会，是否要强制删除并覆盖{}、{}、{}字段，是：y/Y, 否：输入其他任意字符'.format(sample_tag + '_train', sample_tag + '_val', sample_tag + '_test'))
+            select = input()
+            if select == 'y' or select == 'Y':
+                dataset.untag_samples(sample_tag + '_train')
+                dataset.untag_samples(sample_tag + '_val')
+                dataset.untag_samples(sample_tag + '_test')
+                print('已强制删除{}、{}、{} 字段'.format(sample_tag + '_train', sample_tag + '_val', sample_tag + '_test'))
+            else:
+                print('下次可不会再给你机会了！！！')
+                return
+        else:
+            print('The target field already exists, please force_overwrite set to True')
+            logging.warning("The target field already exists, please force_overwrite set to True")
+            return
+
+    train_data = dataset.select_by('filepath', split_train)
+    train_data.tag_samples(sample_tag + '_train')
+    if split_val:
+        val_data = dataset.select_by('filepath', split_val)
+        val_data.tag_samples(sample_tag + '_val')
+    test_data = dataset.select_by('filepath', split_test)
+    test_data.tag_samples(sample_tag + '_test')
+    print('\033[1;34m数据划分成功，相应字段为{}、{}、{}\033[0m'.format(
+        sample_tag + '_train', sample_tag + '_val', sample_tag + '_test'))
