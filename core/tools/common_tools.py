@@ -18,6 +18,8 @@ import gc
 from sklearn.model_selection import train_test_split
 import os
 from concurrent import futures
+from collections import defaultdict
+import random
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
@@ -32,7 +34,7 @@ import numpy as np
 import qdrant_client as qc
 from fiftyone import ViewField as F
 
-from core.utils import get_all_file_path, optimize_view, split_data
+from core.utils import get_all_file_path, optimize_view, split_data, split_data_force
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
@@ -584,14 +586,18 @@ def split_dataset(
             return
 
     assert round(sum(split_ratio), 3) == 1, "the sum of split_ratio must be 1, 别把数据搞丢了"  # 0.7 + 0.1 = 0.899999
-    if isinstance(split_ratio, list):
-        assert len(split_ratio) <= 3, "len(split_ratio) > 3， 输入的很不河里"
-
+    assert isinstance(split_ratio, list), "输入的split_ratio不合法，应为List"
+    assert len(split_ratio) <= 3, "len(split_ratio) > 3， 输入的很不河里"
+    split_data_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
     dataset = optimize_view(dataset)
+    file_path = dataset.distinct('filepath')
+    random.shuffle(file_path)
+    dataset = dataset.select_by('filepath', file_path)
     dataset_temp = copy.deepcopy(dataset)
 
     split_train, split_val, split_test = [], [], []
     # 按照给定类别划分数据集
+    i = 0
     if class_list:
         for cls in tqdm(
             class_list,
@@ -600,30 +606,37 @@ def split_dataset(
             dynamic_ncols=True,
             colour="green",
     ):
+            i += 1
             cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
             cls_path = cls_data.distinct('filepath')
+
             if not cls_path:
                 continue
-            temp_train, temp_val, temp_test = split_data(cls_path, split_ratio)
+
+            print('------------------', i, cls, len(cls_data), len(cls_path))
+            temp_train, temp_val, temp_test = split_data_force(cls_path, split_ratio)  # 单纯按类别划分，不考虑跨类别均衡情况下，运行时间可以接受
+            # temp_train, temp_val, temp_test = split_data(cls_data, split_data_detail,  split_ratio)  # 考虑跨类别均衡时，占用时间很多，需要全面优化
             dataset_temp = dataset_temp.exclude_by('filepath', cls_path)
             split_train.extend(temp_train)
             split_val.extend(temp_val)
             split_test.extend(temp_test)
+
         for id, path in enumerate([split_train, split_val, split_test]):
             if id == 0:
                 other_data = dataset_temp.exclude_by('filepath', path)
             else:
                 other_data = other_data.exclude_by('filepath', path)
         other_path = other_data.distinct('filepath')
-        temp_train, temp_val, temp_test = split_data(other_path, split_ratio)
+        # 对于不在cls_list中的类别，直接暴力划分数据
+        temp_train, temp_val, temp_test = split_data_force(other_path, split_ratio)
         split_train.extend(temp_train)
         split_val.extend(temp_val)
         split_test.extend(temp_test)
-
+        split_data_detail.clear()
     # 粗鄙之人： 直接暴力划分
     else:
         filepath = dataset.distinct('filepath')
-        split_train, split_val, split_test = split_data(filepath, split_ratio)
+        split_train, split_val, split_test = split_data_force(filepath, split_ratio)
 
     sample_tag = tags if tags else "auto"
     exists_tags = dataset.distinct('tags')

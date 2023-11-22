@@ -19,7 +19,7 @@ import fiftyone.core.view as focv
 from PIL import Image
 import requests
 from sklearn.model_selection import train_test_split, StratifiedKFold
-
+import random
 from core.logging import logging
 
 def optimize_view(dataset:Union[fo.Dataset,fo.DatasetView])->Union[fo.Dataset,fo.DatasetView]:
@@ -432,8 +432,107 @@ def get_latest_version(repo_owner, repo_name):
     except Exception as e:
         return None
 
+def split_data(deal_data: Union[fo.Dataset, fo.DatasetView], split_data_detail: Dict,
+               split_ratio: List[float]):
+    temp_val = []
+    temp_train, temp_test = split_train_test(deal_data, split_data_detail, [split_ratio[0], round(1 - split_ratio[0], 5)])
+    # print('-------初始数据{}-----第一次划分后temp_train{}、temp_test{}'.format(len(deal_data), len(temp_train), len(temp_test)))
 
-def split_data(filepath, split_ratio):
+    if len(split_ratio) == 3:
+
+        if not temp_test or not temp_train:
+            return (temp_train, temp_val, temp_test)
+
+        test_data = deal_data.select_by('filepath', temp_test)
+        split_test_val_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
+
+        temp_val, temp_test = split_train_test(test_data, split_test_val_detail,
+                                               [round(split_ratio[1] / (1 - split_ratio[0]), 5),
+                                                round(split_ratio[2] / (1 - split_ratio[0]), 5)])
+        # print('------初始数据{}------第二次划分temp_train{}、temp_test{}'.format(len(test_data), len(temp_val), len(temp_test)))
+    return (temp_train, temp_val, temp_test)
+
+def split_train_test(deal_data: Union[fo.Dataset, fo.DatasetView], split_data_detail: Dict,
+                     split_ratio: List[float]):
+    """
+    当前流程必须查询每张图片的类别，根据已划分类别个数划分数据， 但在for循环中使用dataset.select_by和dataset.distinct函数，
+    占用时间巨大，导致程序运行起来很慢
+    # TODO: 改进当前流程
+    :param deal_data: 待划分数据
+    :param split_data_detail: 划分数据类别详细信息 key: train、test
+    :param split_ratio: 数据划分比例
+    :return:
+    """
+    temp_train, temp_test = [], []
+    data_path = deal_data.distinct('filepath')
+    test_size = int(len(deal_data) * split_ratio[1])
+    train_size = len(deal_data) - test_size
+    # single_data = deal_data.select_by('filepath', data_path[0])  # 这两条语句占用时间巨多
+    # current_cls = single_data.distinct('ground_truth.detections.label')  # 这两条语句占用时间巨多
+    for single_path in data_path:
+
+        single_data = deal_data.select_by('filepath', single_path)            # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
+        current_cls = single_data.distinct('ground_truth.detections.label')   # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
+        key, split_data_detail = analytics_cls(split_data_detail, current_cls, train_size, test_size)
+        if key == 'done':
+            return temp_train, temp_test
+        elif key == 'train':
+            temp_train.append(single_path)
+            train_size -= 1
+        elif key == 'test':
+            temp_test.append(single_path)
+            test_size -= 1
+        else:
+            raise ValueError('-------------ERROR')
+    return temp_train, temp_test
+
+def analytics_cls(split_data_detail, current_cls, train_size, test_size):
+    """
+    设立评分机制： 对当前图片中的类别在训练集和测试集进行打分
+    大体思路：对于当前图片里的类别，训练集的类别个数比测试集的类别个数少，则将当前图片添加到训练集
+    :param split_data_detail: 已划分数据中的类别详情
+    :param current_cls:  在单张图像中，出现的类别
+    :param train_size:  剩余训练集图片的数量
+    :param test_size:  剩余测试集图片的数量
+    :return:
+    """
+    train_score, test_score = 0, 0
+    train_cls_count = defaultdict(int, {cls: split_data_detail['train'][cls] for cls in current_cls})
+    test_cls_count = defaultdict(int, {cls: split_data_detail['test'][cls] for cls in current_cls})
+    if train_size == 0 and test_size == 0:
+        split_data_detail = {}
+        return 'done', split_data_detail
+    elif train_size == 0:  # 训练集分配完毕，直接分配给测试集
+        split_data_detail['test'].update({cls: split_data_detail['test'][cls] + 1 for cls in current_cls})
+        return 'test', split_data_detail
+    elif test_size == 0:  # 测试集分配完毕，直接分配给训练集
+        split_data_detail['train'].update({cls: split_data_detail['train'][cls] + 1 for cls in current_cls})
+        return 'train', split_data_detail
+    else:  # 设立评分规则
+        for cls in current_cls:
+            train_cls_num = train_cls_count[cls]
+            test_cls_num = test_cls_count[cls]
+            if train_cls_num and test_cls_num:  # 二者均不为零
+                if train_cls_num <= test_cls_num:
+                    train_score += 0.1
+                else:
+                    test_score += 0.1
+            elif train_cls_num == 0 and test_cls_num == 0:  # 二者均为零
+                train_score += 0.3
+                test_score += 0.3
+            elif train_cls_num == 0:
+                train_score += 0.3
+            else:
+                test_score += 0.3
+
+    if train_score >= test_score:
+        split_data_detail['train'].update({cls: split_data_detail['train'][cls] + 1 for cls in current_cls})
+        return 'train', split_data_detail
+    else:
+        split_data_detail['test'].update({cls: split_data_detail['test'][cls] + 1 for cls in current_cls})
+        return 'test', split_data_detail
+
+def split_data_force(filepath, split_ratio):
     temp_test, temp_val = [], []
     try:
         temp_train, temp_test = train_test_split(filepath, train_size=split_ratio[0],
