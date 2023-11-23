@@ -490,7 +490,7 @@ def split_train_test(
     data_path = deal_data.distinct("filepath")
     test_size = int(len(deal_data) * split_ratio[1])
     train_size = len(deal_data) - test_size
-    # single_data = deal_data.select_by('filepath', data_path[0])  # 这两条语句占用时间巨多
+    # single_data = deal_data.select_by('filepath', data_path[0])  # 这两条语句占用时间 巨多
     # current_cls = single_data.distinct('ground_truth.detections.label')  # 这两条语句占用时间巨多
     for single_path in data_path:
         single_data = deal_data.select_by(
@@ -586,8 +586,12 @@ def split_data_force(filepath, split_ratio):
                 train_size=round(split_ratio[1] / (1 - split_ratio[0]), 5),
                 test_size=round(split_ratio[2] / (1 - split_ratio[0]), 5),
             )
-    except:
+        assert len(temp_train) + len(temp_val) + len(temp_test) == len(
+            filepath
+        ), "数据太少划分失败"
+    except Exception as e:
         if len(filepath) <= 6:
+            temp_test, temp_val = [], []
             temp_train = filepath
             return (temp_train, temp_val, temp_test)
         else:
