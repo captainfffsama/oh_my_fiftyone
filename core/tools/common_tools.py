@@ -568,12 +568,12 @@ def split_dataset(
     dataset: Optional[Union[fo.Dataset, fo.DatasetView]] = None
 ):
     """
-    :param split_ratio: 数据划分比例,比例相加必须为1，可输入三个（则自动划分训练、验证、测试），也可输入两个（则自动划分训练、测试），可输入整数也可输入小数
+    :param split_ratio: 数据划分比例,比例相加必须为1，可输入三个（则自动划分训练、验证、测试），也可输入两个（则自动划分训练、测试）
     :param tags:  设定划分后的字段名称, 默认"auto"，即auto_train
                   字符串_train、字符串_val、字符串_test
     :param class_list: 按照给定的类别划分数据集，若class_list为None，则不考虑类别，直接暴力划分数据集
     :param force_overwrite: False. 当划分数据分配的字段与存在的字段发生冲突时，是否强制覆盖已存在的字段
-                            True（请谨慎操作）, 直接清空一存在的冲突字段，将新划分后的数据写入该字段
+                            True（请谨慎操作）, 直接清空已存在的冲突字段，将新划分后的数据写入该字段
     :param dataset: An optional Dataset or DatasetView object representing
                     the dataset on which the function will be applied.
     :return:
