@@ -18,13 +18,15 @@ import fiftyone.core.labels as fol
 import fiftyone.core.view as focv
 from PIL import Image
 import requests
-from sklearn.model_selection import train_test_split, StratifiedKFold
-import random
+from sklearn.model_selection import train_test_split
 from core.logging import logging
 
-def optimize_view(dataset:Union[fo.Dataset,fo.DatasetView])->Union[fo.Dataset,fo.DatasetView]:
-    if isinstance(dataset,focv.DatasetView):
-        return focv.make_optimized_select_view(dataset,dataset.values("id"))
+
+def optimize_view(
+    dataset: Union[fo.Dataset, fo.DatasetView]
+) -> Union[fo.Dataset, fo.DatasetView]:
+    if isinstance(dataset, focv.DatasetView):
+        return focv.make_optimized_select_view(dataset, dataset.values("id"))
     else:
         return dataset
 
@@ -311,7 +313,9 @@ def fol_det_nms(
     return fol.Detections(detections=r)
 
 
-def _export_one_sample_anno(sample, save_dir, backup_dir=None,export_classes: Optional[list] = None):
+def _export_one_sample_anno(
+    sample, save_dir, backup_dir=None, export_classes: Optional[list] = None
+):
     result = {}
     need_export_map = {
         "data_source": "data_source",
@@ -382,7 +386,12 @@ def _export_one_sample_anno(sample, save_dir, backup_dir=None,export_classes: Op
 
 
 def _export_one_sample(
-    sample, exporter, get_anno: bool, save_dir, export_classes: Optional[list] = None,label_filed:str="ground_truth"
+    sample,
+    exporter,
+    get_anno: bool,
+    save_dir,
+    export_classes: Optional[list] = None,
+    label_filed: str = "ground_truth",
 ):
     image_path = sample.filepath
 
@@ -404,7 +413,7 @@ def _export_one_sample(
     exporter.export_sample(image_path, label, metadata=metadata)
 
     if get_anno:
-        _export_one_sample_anno(sample, save_dir,export_classes=export_classes)
+        _export_one_sample_anno(sample, save_dir, export_classes=export_classes)
 
 
 def return_now_time():
@@ -425,35 +434,49 @@ def get_latest_version(repo_owner, repo_name):
         response = requests.get(url)
         if response.status_code == 200:
             latest_release = response.json()
-            version = latest_release['tag_name']
+            version = latest_release["tag_name"]
             return version
         else:
             return None
     except Exception as e:
         return None
 
-def split_data(deal_data: Union[fo.Dataset, fo.DatasetView], split_data_detail: Dict,
-               split_ratio: List[float]):
+
+def split_data(
+    deal_data: Union[fo.Dataset, fo.DatasetView],
+    split_data_detail: Dict,
+    split_ratio: List[float],
+):
     temp_val = []
-    temp_train, temp_test = split_train_test(deal_data, split_data_detail, [split_ratio[0], round(1 - split_ratio[0], 5)])
+    temp_train, temp_test = split_train_test(
+        deal_data, split_data_detail, [split_ratio[0], round(1 - split_ratio[0], 5)]
+    )
     # print('-------初始数据{}-----第一次划分后temp_train{}、temp_test{}'.format(len(deal_data), len(temp_train), len(temp_test)))
 
     if len(split_ratio) == 3:
-
         if not temp_test or not temp_train:
             return (temp_train, temp_val, temp_test)
 
-        test_data = deal_data.select_by('filepath', temp_test)
-        split_test_val_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
+        test_data = deal_data.select_by("filepath", temp_test)
+        split_test_val_detail = {"train": defaultdict(int), "test": defaultdict(int)}
 
-        temp_val, temp_test = split_train_test(test_data, split_test_val_detail,
-                                               [round(split_ratio[1] / (1 - split_ratio[0]), 5),
-                                                round(split_ratio[2] / (1 - split_ratio[0]), 5)])
+        temp_val, temp_test = split_train_test(
+            test_data,
+            split_test_val_detail,
+            [
+                round(split_ratio[1] / (1 - split_ratio[0]), 5),
+                round(split_ratio[2] / (1 - split_ratio[0]), 5),
+            ],
+        )
         # print('------初始数据{}------第二次划分temp_train{}、temp_test{}'.format(len(test_data), len(temp_val), len(temp_test)))
     return (temp_train, temp_val, temp_test)
 
-def split_train_test(deal_data: Union[fo.Dataset, fo.DatasetView], split_data_detail: Dict,
-                     split_ratio: List[float]):
+
+def split_train_test(
+    deal_data: Union[fo.Dataset, fo.DatasetView],
+    split_data_detail: Dict,
+    split_ratio: List[float],
+):
     """
     当前流程必须查询每张图片的类别，根据已划分类别个数划分数据， 但在for循环中使用dataset.select_by和dataset.distinct函数，
     占用时间巨大，导致程序运行起来很慢
@@ -464,27 +487,33 @@ def split_train_test(deal_data: Union[fo.Dataset, fo.DatasetView], split_data_de
     :return:
     """
     temp_train, temp_test = [], []
-    data_path = deal_data.distinct('filepath')
+    data_path = deal_data.distinct("filepath")
     test_size = int(len(deal_data) * split_ratio[1])
     train_size = len(deal_data) - test_size
     # single_data = deal_data.select_by('filepath', data_path[0])  # 这两条语句占用时间巨多
     # current_cls = single_data.distinct('ground_truth.detections.label')  # 这两条语句占用时间巨多
     for single_path in data_path:
-
-        single_data = deal_data.select_by('filepath', single_path)            # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
-        current_cls = single_data.distinct('ground_truth.detections.label')   # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
-        key, split_data_detail = analytics_cls(split_data_detail, current_cls, train_size, test_size)
-        if key == 'done':
+        single_data = deal_data.select_by(
+            "filepath", single_path
+        )  # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
+        current_cls = single_data.distinct(
+            "ground_truth.detections.label"
+        )  # 这两条语句占用时间巨多，暂时没想到比较好的方法或流程
+        key, split_data_detail = analytics_cls(
+            split_data_detail, current_cls, train_size, test_size
+        )
+        if key == "done":
             return temp_train, temp_test
-        elif key == 'train':
+        elif key == "train":
             temp_train.append(single_path)
             train_size -= 1
-        elif key == 'test':
+        elif key == "test":
             temp_test.append(single_path)
             test_size -= 1
         else:
-            raise ValueError('-------------ERROR')
+            raise ValueError("-------------ERROR")
     return temp_train, temp_test
+
 
 def analytics_cls(split_data_detail, current_cls, train_size, test_size):
     """
@@ -497,17 +526,25 @@ def analytics_cls(split_data_detail, current_cls, train_size, test_size):
     :return:
     """
     train_score, test_score = 0, 0
-    train_cls_count = defaultdict(int, {cls: split_data_detail['train'][cls] for cls in current_cls})
-    test_cls_count = defaultdict(int, {cls: split_data_detail['test'][cls] for cls in current_cls})
+    train_cls_count = defaultdict(
+        int, {cls: split_data_detail["train"][cls] for cls in current_cls}
+    )
+    test_cls_count = defaultdict(
+        int, {cls: split_data_detail["test"][cls] for cls in current_cls}
+    )
     if train_size == 0 and test_size == 0:
         split_data_detail = {}
-        return 'done', split_data_detail
+        return "done", split_data_detail
     elif train_size == 0:  # 训练集分配完毕，直接分配给测试集
-        split_data_detail['test'].update({cls: split_data_detail['test'][cls] + 1 for cls in current_cls})
-        return 'test', split_data_detail
+        split_data_detail["test"].update(
+            {cls: split_data_detail["test"][cls] + 1 for cls in current_cls}
+        )
+        return "test", split_data_detail
     elif test_size == 0:  # 测试集分配完毕，直接分配给训练集
-        split_data_detail['train'].update({cls: split_data_detail['train'][cls] + 1 for cls in current_cls})
-        return 'train', split_data_detail
+        split_data_detail["train"].update(
+            {cls: split_data_detail["train"][cls] + 1 for cls in current_cls}
+        )
+        return "train", split_data_detail
     else:  # 设立评分规则
         for cls in current_cls:
             train_cls_num = train_cls_count[cls]
@@ -526,20 +563,29 @@ def analytics_cls(split_data_detail, current_cls, train_size, test_size):
                 test_score += 0.3
 
     if train_score >= test_score:
-        split_data_detail['train'].update({cls: split_data_detail['train'][cls] + 1 for cls in current_cls})
-        return 'train', split_data_detail
+        split_data_detail["train"].update(
+            {cls: split_data_detail["train"][cls] + 1 for cls in current_cls}
+        )
+        return "train", split_data_detail
     else:
-        split_data_detail['test'].update({cls: split_data_detail['test'][cls] + 1 for cls in current_cls})
-        return 'test', split_data_detail
+        split_data_detail["test"].update(
+            {cls: split_data_detail["test"][cls] + 1 for cls in current_cls}
+        )
+        return "test", split_data_detail
+
 
 def split_data_force(filepath, split_ratio):
     temp_test, temp_val = [], []
     try:
-        temp_train, temp_test = train_test_split(filepath, train_size=split_ratio[0],
-                                                 test_size=round(1 - split_ratio[0], 5))
+        temp_train, temp_test = train_test_split(
+            filepath, train_size=split_ratio[0], test_size=round(1 - split_ratio[0], 5)
+        )
         if len(split_ratio) == 3:
-            temp_val, temp_test = train_test_split(temp_test, train_size=round(split_ratio[1] / (1 - split_ratio[0]), 5),
-                                                   test_size=round(split_ratio[2] / (1 - split_ratio[0]), 5))
+            temp_val, temp_test = train_test_split(
+                temp_test,
+                train_size=round(split_ratio[1] / (1 - split_ratio[0]), 5),
+                test_size=round(split_ratio[2] / (1 - split_ratio[0]), 5),
+            )
     except:
         if len(filepath) <= 6:
             temp_train = filepath
