@@ -20,6 +20,7 @@ import os
 from concurrent import futures
 from collections import defaultdict
 import random
+import operator
 
 import fiftyone as fo
 import fiftyone.core.dataset as focd
@@ -588,35 +589,42 @@ def split_dataset(
     assert round(sum(split_ratio), 3) == 1, "the sum of split_ratio must be 1, 别把数据搞丢了"  # 0.7 + 0.1 = 0.899999
     assert isinstance(split_ratio, list), "输入的split_ratio不合法，应为List"
     assert len(split_ratio) <= 3, "len(split_ratio) > 3， 输入的很不河里"
-    split_data_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
+    # split_data_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
     dataset = optimize_view(dataset)
     file_path = dataset.distinct('filepath')
     random.shuffle(file_path)
     dataset = dataset.select_by('filepath', file_path)
     dataset_temp = copy.deepcopy(dataset)
-
     split_train, split_val, split_test = [], [], []
+
+    # 对于class_list,统计各类别多少张图片,并对cls_num进行升序排列，最终遍历字典
+    cls_info = defaultdict(int)
+    for cls in class_list:
+        cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
+        cls_info[cls] += len(cls_data)
+    cls_info = dict(sorted(cls_info.items(), key=operator.itemgetter(1)))
+
     # 按照给定类别划分数据集
-    i = 0
     if class_list:
-        for cls in tqdm(
-            class_list,
+        for cls, num in tqdm(
+            cls_info.items(),
             total=len(class_list),
             desc="按类别划分进度:",
             dynamic_ncols=True,
             colour="green",
-    ):
-            i += 1
+        ):
             cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
             cls_path = cls_data.distinct('filepath')
 
             if not cls_path:
                 continue
 
-            print('------------------', i, cls, len(cls_data), len(cls_path))
             temp_train, temp_val, temp_test = split_data_force(cls_path, split_ratio)  # 单纯按类别划分，不考虑跨类别均衡情况下，运行时间可以接受
+            total_split = len(temp_train) + len(temp_val) + len(temp_test)
+            assert len(cls_path) == total_split, '!!!!! {}  !!!!!当前类别:{}，划分前：{}，划分后：{}'.format(len(cls_path), cls, len(cls_path), total_split)
             # temp_train, temp_val, temp_test = split_data(cls_data, split_data_detail,  split_ratio)  # 考虑跨类别均衡时，占用时间很多，需要全面优化
             dataset_temp = dataset_temp.exclude_by('filepath', cls_path)
+
             split_train.extend(temp_train)
             split_val.extend(temp_val)
             split_test.extend(temp_test)
@@ -641,7 +649,8 @@ def split_dataset(
     sample_tag = tags if tags else "auto"
     exists_tags = dataset.distinct('tags')
     print('划分之后的训练集:{}、验证集:{}、测试集:{}'.format(len(split_train), len(split_val), len(split_test)))
-    if sample_tag + '_train' in exists_tags or sample_tag + '_test' in exists_tags:
+    if sample_tag + '_train' in exists_tags or sample_tag + '_test' in exists_tags or sample_tag + '_val' in exists_tags:
+        print('---------------------------------------------', force_overwrite)
         if force_overwrite:
             print('给你一次反悔的机会，是否要强制删除并覆盖{}、{}、{}字段，是：y/Y, 否：输入其他任意字符'.format(sample_tag + '_train', sample_tag + '_val', sample_tag + '_test'))
             select = input()
