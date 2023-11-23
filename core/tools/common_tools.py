@@ -35,7 +35,7 @@ import numpy as np
 import qdrant_client as qc
 from fiftyone import ViewField as F
 
-from core.utils import get_all_file_path, optimize_view, split_data, split_data_force
+from core.utils import get_all_file_path, optimize_view, split_data_force, analytics_split
 from core.logging import logging
 
 from core.cache import WEAK_CACHE
@@ -589,7 +589,6 @@ def split_dataset(
     assert round(sum(split_ratio), 3) == 1, "the sum of split_ratio must be 1, 别把数据搞丢了"  # 0.7 + 0.1 = 0.899999
     assert isinstance(split_ratio, list), "输入的split_ratio不合法，应为List"
     assert len(split_ratio) <= 3, "len(split_ratio) > 3， 输入的很不河里"
-    # split_data_detail = {'train': defaultdict(int), 'test': defaultdict(int)}
     dataset = optimize_view(dataset)
     file_path = dataset.distinct('filepath')
     random.shuffle(file_path)
@@ -597,38 +596,56 @@ def split_dataset(
     dataset_temp = copy.deepcopy(dataset)
     split_train, split_val, split_test = [], [], []
 
-    # 对于class_list,统计各类别多少张图片,并对cls_num进行升序排列，最终遍历字典
-    cls_info = defaultdict(int)
-    for cls in class_list:
-        cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
-        cls_info[cls] += len(cls_data)
-    cls_info = dict(sorted(cls_info.items(), key=operator.itemgetter(1)))
-
-    # 按照给定类别划分数据集
     if class_list:
-        for cls, num in tqdm(
-            cls_info.items(),
-            total=len(class_list),
-            desc="按类别划分进度:",
+        # 分析数据集的各类别情况
+        cls_info = defaultdict(int)
+        for sample in tqdm(
+            dataset,
+            total=len(dataset),
+            desc="数据集分析进度:",
             dynamic_ncols=True,
             colour="green",
         ):
+            detections = sample["ground_truth"]["detections"]
+            cur_list = []
+            for det in detections:
+                single_cls = det['label']
+                if single_cls in class_list:
+                    cls_info[single_cls] += 1
+
+        cls_info = dict(sorted(cls_info.items(), key=operator.itemgetter(1)))
+        cls_info_temp = copy.deepcopy(cls_info)
+        visited_classes = set()
+        while cls_info_temp:
+            cls = list(cls_info_temp.items())[0][0]  # 类别数量最少的cls
+            num = list(cls_info_temp.items())[0][1]
+            print('当前类别为：{}， label数量为：{}'.format(cls, num))
             cls_data = dataset_temp.match(F('ground_truth.detections.label').contains([cls, '']))
             cls_path = cls_data.distinct('filepath')
 
             if not cls_path:
+                visited_classes.add(cls)
+                if cls in cls_info_temp:
+                    del cls_info_temp[cls]
                 continue
+
+            cur_cls_info = analytics_split(cls_data, class_list)
+            for key in cur_cls_info:
+                if key in visited_classes:
+                    continue
+                cls_info[key] -= cur_cls_info[key]
 
             temp_train, temp_val, temp_test = split_data_force(cls_path, split_ratio)  # 单纯按类别划分，不考虑跨类别均衡情况下，运行时间可以接受
             total_split = len(temp_train) + len(temp_val) + len(temp_test)
             assert len(cls_path) == total_split, '!!!!! {}  !!!!!当前类别:{}，划分前：{}，划分后：{}'.format(len(cls_path), cls, len(cls_path), total_split)
-            # temp_train, temp_val, temp_test = split_data(cls_data, split_data_detail,  split_ratio)  # 考虑跨类别均衡时，占用时间很多，需要全面优化
             dataset_temp = dataset_temp.exclude_by('filepath', cls_path)
 
             split_train.extend(temp_train)
             split_val.extend(temp_val)
             split_test.extend(temp_test)
-
+            cls_info_temp = dict(sorted(cls_info_temp.items(), key=lambda x: x[1]))  # 重新排序
+            visited_classes.add(cls)
+            del cls_info_temp[cls]
         for id, path in enumerate([split_train, split_val, split_test]):
             if id == 0:
                 other_data = dataset_temp.exclude_by('filepath', path)
@@ -640,7 +657,6 @@ def split_dataset(
         split_train.extend(temp_train)
         split_val.extend(temp_val)
         split_test.extend(temp_test)
-        split_data_detail.clear()
     # 粗鄙之人： 直接暴力划分
     else:
         filepath = dataset.distinct('filepath')
