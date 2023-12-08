@@ -54,7 +54,7 @@ def print_time_deco(func):
         finally:
             end = time.perf_counter()
             print("\033[1;34m操作完成时间: {}, 操作耗时: {} 秒\033[0m".format(
-                datetime.now(), end - start))
+                datetime.now().replace(microsecond=0), end - start))
         return result
 
     return wrapper
@@ -383,7 +383,8 @@ def find_similar_img(
             qc数据库仓库名称,不写就默认是dataset.name + "_sim"
 
         topk: int = 3:
-            取最相似的多少个图片
+            取最相似的多少个图片    s: fo.Session = WEAK_CACHE.get("session", None)
+    if s is None:
 
         show: bool = True:
             是否在浏览器上显示相似的图片并在终端显示结果
@@ -393,7 +394,7 @@ def find_similar_img(
 
     Example:
         >>> # 若要嵌入到其他脚本中应用,建议取消wrap
-        >>> find_simi_img=T.find_similar_img.__wrapper__
+        >>> find_simi_img=T.find_similar_img.__wrapped__
 
     """
     s: fo.Session = WEAK_CACHE.get("session", None)

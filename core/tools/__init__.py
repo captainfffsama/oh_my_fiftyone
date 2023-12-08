@@ -3,7 +3,7 @@
 @Author: captainfffsama
 @Date: 2023-02-28 15:48:55
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
-@LastEditTime: 2023-10-09 10:40:04
+@LastEditTime: 2023-12-08 18:24:39
 @Description:
     支持以下方法:
     - export_anno_file: 导出anno文件
@@ -24,10 +24,12 @@
     - tag_chiebot_sample: 更新chiebot_sample_tags
     - untag_chiebot_sample: 删除chiebot_sample_tags中字段
     - DatasetAnalyer: 数据集分析(需要额外安装包支持)
+    - xml: xml 工具包(危险操作)
 '''
 from .export import export_anno_file, export_sample
 from .dataset_opt import update_dataset, add_dataset_fields_by_txt, clean_dataset, generate_qdrant_idx,duplicate_det,clean_all_brain_qdrant
 from .common_tools import get_select_dv, dataset_value2txt,imgslist2dataview,check_dataset_exif,model_det,get_embedding, find_similar_img,tag_chiebot_sample,untag_chiebot_sample, split_dataset
+from . import xml_change as xml
 
 try:
     import dash
