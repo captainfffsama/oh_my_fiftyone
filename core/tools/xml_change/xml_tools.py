@@ -34,10 +34,10 @@ def _change_xml_cls_deal_one(
     need_del_classes: Tuple[str],
     change_cls_map: Dict[str, str],
     bak_dir: str,
-):
+) -> Tuple[bool,str]:
     xml_path = os.path.splitext(img_path)[0] + ".xml"
     if not os.path.exists(xml_path):
-        return img_path
+        return False,img_path
 
     objs_info = voc.load_voc_detection_annotations(xml_path).to_detections().detections
     remain_objs = []
@@ -52,7 +52,7 @@ def _change_xml_cls_deal_one(
         remain_objs.append(obj)
 
     if not change_flag:
-        return img_path
+        return False,img_path
 
     save_path = os.path.join(bak_dir, os.path.basename(xml_path))
     shutil.copyfile(xml_path, save_path)
@@ -62,7 +62,7 @@ def _change_xml_cls_deal_one(
     )
     with saver:
         saver.export_sample(img_path, detections=fol.Detections(detections=remain_objs))
-    return img_path
+    return True,img_path
 
 
 def change_xml_label_class(
@@ -111,6 +111,7 @@ def change_xml_label_class(
         return
 
     need_deal_img_paths = dataset.values("filepath")
+    have_change_list=[]
 
     with fo.ProgressBar(
         total=len(need_deal_img_paths),
@@ -129,14 +130,16 @@ def change_xml_label_class(
                 for img_path in need_deal_img_paths
             ]
             for task in futures.as_completed(tasks):
-                img_path = task.result()
+                change_flag,img_path = task.result()
+                if change_flag:
+                    have_change_list.append(img_path)
                 pb.update(1)
 
     update_func = update_dataset.__wrapped__
     update_func (
         dataset=deal_dataset,
         update_imgs_asbase=True,
-        sample_path_list=need_deal_img_paths,
+        sample_path_list=have_change_list,
     )
 
     s: fo.Session = WEAK_CACHE.get("session", None)
