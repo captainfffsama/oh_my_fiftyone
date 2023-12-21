@@ -24,7 +24,7 @@ from core.logging import logging
 
 
 def optimize_view(
-    dataset: Union[fo.Dataset, fo.DatasetView]
+    dataset: Union[fo.Dataset, fo.DatasetView],
 ) -> Union[fo.Dataset, fo.DatasetView]:
     if isinstance(dataset, focv.DatasetView):
         return focv.make_optimized_select_view(dataset, dataset.values("id"))
@@ -269,7 +269,7 @@ def NMS(boxes, iou_thr=0.5, sort_by="area"):
 
 
 def det_labels2npdict(
-    labels: Union[List[fol.Detection], fol.Detections]
+    labels: Union[List[fol.Detection], fol.Detections],
 ) -> Dict[str, np.ndarray]:
     if isinstance(labels, fol.Detections):
         labels = labels.detections
@@ -449,7 +449,7 @@ def analytics_split(dataset, class_list):
         detections = sample["ground_truth"]["detections"]
         cur_list = []
         for det in detections:
-            single_cls = det['label']
+            single_cls = det["label"]
             if single_cls in class_list:
                 cls_info[single_cls] += 1
     return cls_info

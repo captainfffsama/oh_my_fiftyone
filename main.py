@@ -37,16 +37,12 @@ from core import logo
 
 
 class DatasetClass(Protocol):
-
     def __call__(self, s: fo.Session) -> focd.Dataset:
         pass
 
 
 def launch_dataset(_d11: focd.Dataset):
-    session = fo.launch_app(dataset=_d11,
-                            address="0.0.0.0",
-                            remote=True,
-                            auto=True)
+    session = fo.launch_app(dataset=_d11, address="0.0.0.0", remote=True, auto=True)
     WEAK_CACHE["session"] = session
     embed(header=logo.word, colors="linux")
     # session.wait(1)
@@ -58,7 +54,6 @@ def number_in_ranger(text: str, min=0, max=100):
 
 
 def _get_merge_label_args() -> dict:
-
     def validat_number(input):
         try:
             n = float(input)
@@ -80,13 +75,14 @@ def _get_overlap_label_args():
     while not ok_flag:
         import_data_cls_str: str = prompt(
             """请输入导入样本包含的类别,\",\"分隔,Enter确认终止输入,
-若为空,则相同样本的导入类别以标签文件中有的类别为主:""", )
+若为空,则相同样本的导入类别以标签文件中有的类别为主:""",
+        )
         print(import_data_cls_str.strip().split(","))
-        import_data_cls = set(
-            [x for x in import_data_cls_str.strip().split(",") if x])
-        ok_flag = yes_no_dialog(title="确认导入样本类别",
-                                text="导入样本类别有:{}".format(
-                                    ",".join(import_data_cls))).run()
+        import_data_cls = set([x for x in import_data_cls_str.strip().split(",") if x])
+        ok_flag = yes_no_dialog(
+            title="确认导入样本类别",
+            text="导入样本类别有:{}".format(",".join(import_data_cls)),
+        ).run()
 
         if ok_flag:
             break
@@ -99,16 +95,19 @@ def _get_new_label_args():
 
 def add_data2exsist_dataset():
     prompt_session = PromptSession()
-    data_path = prompt_session.prompt("请输入数据路径:",
-                                      completer=PathCompleter(),
-                                      complete_in_thread=True,
-                                      validator=None)
+    data_path = prompt_session.prompt(
+        "请输入数据路径:",
+        completer=PathCompleter(),
+        complete_in_thread=True,
+        validator=None,
+    )
     exist_dataset = fo.list_datasets()
     data_path = os.path.abspath(data_path)
 
     if exist_dataset:
-        valida = Validator.from_callable(lambda x: x in exist_dataset,
-                                         error_message="没有这个数据集")
+        valida = Validator.from_callable(
+            lambda x: x in exist_dataset, error_message="没有这个数据集"
+        )
         import_dataset_name = prompt_session.prompt(
             "请输入要导入的数据集名称:",
             validator=valida,
@@ -116,8 +115,9 @@ def add_data2exsist_dataset():
             complete_in_thread=True,
         )
 
-        valida1 = Validator.from_callable(lambda x: x in ("y", "n"),
-                                          error_message="瞎选什么啊")
+        valida1 = Validator.from_callable(
+            lambda x: x in ("y", "n"), error_message="瞎选什么啊"
+        )
         t2 = prompt_session.prompt(
             "要不要把新数据原始数据考到已有数据文件夹? [y/n]:",
             validator=valida1,
@@ -133,14 +133,20 @@ def add_data2exsist_dataset():
             dataset.save()
             print("dataset merge done")
         else:
-            flag_map = {"overlap": "覆盖", "merge": "合并", "new": "完全使用传入标签替换"}
-            v1 = Validator.from_callable(lambda x: x in flag_map.keys(),
-                                         error_message="瞎选什么啊")
+            flag_map = {
+                "overlap": "覆盖",
+                "merge": "合并",
+                "new": "完全使用传入标签替换",
+            }
+            v1 = Validator.from_callable(
+                lambda x: x in flag_map.keys(), error_message="瞎选什么啊"
+            )
             merge_method = prompt_session.prompt(
                 "相同样本是覆盖(overlap),合并(merge)还是完全使用新标签替换(new):",
                 validator=v1,
                 completer=WordCompleter(flag_map.keys()),
-                default="merge")
+                default="merge",
+            )
             method_map = {
                 "overlap": _get_overlap_label_args,
                 "merge": _get_merge_label_args,
@@ -148,15 +154,19 @@ def add_data2exsist_dataset():
             }
             method_args = method_map[merge_method]()
 
-            import_new_sample2exist_dataset(dataset, data_path, merge_method,
-                                            **method_args)
+            import_new_sample2exist_dataset(
+                dataset, data_path, merge_method, **method_args
+            )
             print("新数据导入完毕")
         launch_dataset(dataset)
     else:
         print_formatted_text(
-            HTML("""
+            HTML(
+                """
     <ansigreen>没有现成的数据集,没法追加数据集,请先创建数据集</ansigreen>
-                                  """))
+                                  """
+            )
+        )
         time.sleep(1)
 
 
@@ -164,8 +174,9 @@ def check_exsist_dataset():
     prompt_session = PromptSession()
     exist_dataset = fo.list_datasets()
     if exist_dataset:
-        valida = Validator.from_callable(lambda x: x in exist_dataset,
-                                         error_message="没有这个数据集")
+        valida = Validator.from_callable(
+            lambda x: x in exist_dataset, error_message="没有这个数据集"
+        )
         text = prompt_session.prompt(
             "请输入需要查询的数据集名称,按Tab补全选:",
             completer=WordCompleter(exist_dataset),
@@ -176,25 +187,31 @@ def check_exsist_dataset():
         launch_dataset(dataset)
     else:
         print_formatted_text(
-            HTML("""
+            HTML(
+                """
     <ansigreen>没有现成的数据集</ansigreen>
-                                  """))
+                                  """
+            )
+        )
         time.sleep(1)
 
 
 def init_new_dataset():
     prompt_session = PromptSession()
-    text = prompt_session.prompt("请输入数据集路径:",
-                                 completer=PathCompleter(),
-                                 complete_in_thread=True,
-                                 validator=None)
+    text = prompt_session.prompt(
+        "请输入数据集路径:",
+        completer=PathCompleter(),
+        complete_in_thread=True,
+        validator=None,
+    )
     t1 = prompt_session.prompt("请输入新导入的数据集名称:", validator=None)
     # text= "/home/chiebotgpuhq/tmp_space/fif_test_data"
     text = os.path.abspath(text)
     if t1 in fo.list_datasets():
         t2 = yes_no_dialog(
             title="老实交代覆不覆盖数据库",
-            text="{} 数据集已经存在,继续将覆盖已有的数据集,是否继续?".format(t1)).run()
+            text="{} 数据集已经存在,继续将覆盖已有的数据集,是否继续?".format(t1),
+        ).run()
         if not t2:
             return
     if not t1:
@@ -209,8 +226,9 @@ def delete_exsist_dataset():
     prompt_session = PromptSession()
     exist_dataset = fo.list_datasets()
     if exist_dataset:
-        valida = Validator.from_callable(lambda x: x in exist_dataset,
-                                         error_message="没有这个数据集")
+        valida = Validator.from_callable(
+            lambda x: x in exist_dataset, error_message="没有这个数据集"
+        )
         text = prompt_session.prompt(
             "请输入需要删除的数据集名称,按Tab补全选:",
             completer=WordCompleter(exist_dataset),
@@ -218,46 +236,61 @@ def delete_exsist_dataset():
             validator=valida,
         )
 
-        t2 = yes_no_dialog(title="你真的要删库跑路吗?你最好想想你在做什么!",
-                           text="确定删除{}数据库吗?".format(text)).run()
+        t2 = yes_no_dialog(
+            title="你真的要删库跑路吗?你最好想想你在做什么!",
+            text="确定删除{}数据库吗?".format(text),
+        ).run()
         if t2:
             focd.delete_dataset(text)
             print_formatted_text(
-                HTML("""
+                HTML(
+                    """
         <red>删除{}数据库成功!!</red>
-                                    """.format(text)))
+                                    """.format(text)
+                )
+            )
             time.sleep(1)
     else:
         print_formatted_text(
-            HTML("""
+            HTML(
+                """
     <ansigreen>没有现成的数据集</ansigreen>
-                                  """))
+                                  """
+            )
+        )
         time.sleep(1)
 
 
 def preprocess_data():
     prompt_session = PromptSession()
-    dataset_dir = prompt_session.prompt("请输入样本路径:",
-                                        completer=PathCompleter(),
-                                        complete_in_thread=True,
-                                        validator=None)
+    dataset_dir = prompt_session.prompt(
+        "请输入样本路径:",
+        completer=PathCompleter(),
+        complete_in_thread=True,
+        validator=None,
+    )
 
     dataset_dir = os.path.abspath(dataset_dir)
 
-    save_dir = prompt_session.prompt("请输入保存路径:",
-                                     completer=PathCompleter(),
-                                     complete_in_thread=True,
-                                     validator=None)
+    save_dir = prompt_session.prompt(
+        "请输入保存路径:",
+        completer=PathCompleter(),
+        complete_in_thread=True,
+        validator=None,
+    )
 
     save_dir = os.path.abspath(save_dir)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 
-    valida1 = Validator.from_callable(lambda x: x in ("y", "n"),
-                                      error_message="瞎选什么啊")
-    t2 = prompt_session.prompt("是否进行md5重命名? [y/n]:",
-                               validator=valida1,
-                               completer=WordCompleter(["y", "n"]))
+    valida1 = Validator.from_callable(
+        lambda x: x in ("y", "n"), error_message="瞎选什么啊"
+    )
+    t2 = prompt_session.prompt(
+        "是否进行md5重命名? [y/n]:",
+        validator=valida1,
+        completer=WordCompleter(["y", "n"]),
+    )
 
     rename = False
     prefix = ""
@@ -268,9 +301,11 @@ def preprocess_data():
         prefix = t3
 
     convert2jpg = False
-    t4 = prompt_session.prompt("是否全部转换为jpg? [y/n]:",
-                               validator=valida1,
-                               completer=WordCompleter(["y", "n"]))
+    t4 = prompt_session.prompt(
+        "是否全部转换为jpg? [y/n]:",
+        validator=valida1,
+        completer=WordCompleter(["y", "n"]),
+    )
     if t4 == "y":
         convert2jpg = True
 
@@ -288,8 +323,8 @@ def preprocess_data():
 
 
 def merge_label():
-
-    win_show = HTML("""
+    win_show = HTML(
+        """
 ===========================================
 请保证输入的待处理样本标签目录中子目录是按照每份标签
 进行划分,即如下:
@@ -308,29 +343,30 @@ def merge_label():
 
 所有标签有关文件须和图片在同一级
 ===========================================
-请输入待处理的标签目录们的父目录:""")
+请输入待处理的标签目录们的父目录:"""
+    )
 
     prompt_session = PromptSession()
-    labels_part_dir = prompt_session.prompt(win_show,
-                                            completer=PathCompleter(),
-                                            complete_in_thread=True,
-                                            validator=None)
+    labels_part_dir = prompt_session.prompt(
+        win_show, completer=PathCompleter(), complete_in_thread=True, validator=None
+    )
 
     labels_part_dir = os.path.abspath(labels_part_dir)
 
-    save_dir = prompt_session.prompt("合并结果的保存目录:",
-                                     completer=PathCompleter(),
-                                     complete_in_thread=True,
-                                     validator=None)
+    save_dir = prompt_session.prompt(
+        "合并结果的保存目录:",
+        completer=PathCompleter(),
+        complete_in_thread=True,
+        validator=None,
+    )
     save_dir = os.path.abspath(save_dir)
-    valida = Validator.from_callable(lambda x: x in
-                                     ("voc", "coco", "yolov4", "yolov5"),
-                                     error_message="瞎选什么啊")
+    valida = Validator.from_callable(
+        lambda x: x in ("voc", "coco", "yolov4", "yolov5"), error_message="瞎选什么啊"
+    )
     type_c = WordCompleter(["voc", "coco", "yolov4", "yolov5"])
-    save_label_type = prompt("合并结果的标签格式:",
-                             completer=type_c,
-                             validator=valida,
-                             default="voc")
+    save_label_type = prompt(
+        "合并结果的标签格式:", completer=type_c, validator=valida, default="voc"
+    )
 
     img_path_dict = {}
     label_dict = defaultdict(list)
@@ -369,11 +405,15 @@ def merge_label():
         "yolov5": YOLOv5DatasetExporter,
     }
 
-    exporter = FORMAT_CLASS_MAP[save_label_type](export_dir=save_dir, )
+    exporter = FORMAT_CLASS_MAP[save_label_type](
+        export_dir=save_dir,
+    )
     with exporter:
-        with fo.ProgressBar(total=len(label_dict.keys()),
-                            start_msg="标签文件合并进度:",
-                            complete_msg="合并完毕") as pb:
+        with fo.ProgressBar(
+            total=len(label_dict.keys()),
+            start_msg="标签文件合并进度:",
+            complete_msg="合并完毕",
+        ) as pb:
             for k, v in pb(label_dict.items()):
                 objs = fol_det_nms(v, iou_thr=0.7)
                 img_path = img_path_dict[k]
@@ -384,10 +424,10 @@ def merge_label():
 def check_version() -> str:
     remote_version = get_latest_version("captainfffsama", "oh_my_fiftyone")
     if remote_version is None:
-        return u"未检测到最新版本,可能是网络问题"
+        return "未检测到最新版本,可能是网络问题"
     else:
         if Version(remote_version) > Version(__version__):
-            return u"检测到最新版本{}，建议更新最新版本!".format(remote_version)
+            return "检测到最新版本{}，建议更新最新版本!".format(remote_version)
         else:
             return ""
 
@@ -396,10 +436,11 @@ def check_version() -> str:
 def main():
     try:
         import setproctitle
-        proctitle="oh_my_fiftyone"
+
+        proctitle = "oh_my_fiftyone"
         setproctitle.setproctitle(proctitle)
     except Exception as e:
-        proctitle="python main.py"
+        proctitle = "python main.py"
     info_show = check_version()
     prompt_session = PromptSession()
     function_map = {
@@ -409,7 +450,7 @@ def main():
         "4": delete_exsist_dataset,
         "5": preprocess_data,
         "6": merge_label,
-        "7": exit
+        "7": exit,
     }
     while True:
         main_vali = Validator.from_callable(
@@ -417,7 +458,8 @@ def main():
             error_message="瞎输啥编号呢,用退格删了重输",
         )
         main_win_show = to_formatted_text(
-            HTML("""
+            HTML(
+                """
 ===========================================
 {}
 当前进程名称: {}
@@ -430,7 +472,9 @@ def main():
 4. 删除已有数据集
 5. 处理数据
 ===========================================
-        请输入要做事情的编号:""".format(info_show, proctitle,logo.cat, __version__)))
+        请输入要做事情的编号:""".format(info_show, proctitle, logo.cat, __version__)
+            )
+        )
 
         main_win_select = prompt_session.prompt(
             main_win_show,

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 @Author: captainsama
 @Date: 2023-02-27 16:20:02
 @LastEditors: captainfffsama tuanzhangsama@outlook.com
 @LastEditTime: 2023-03-24 17:21:51
 @FilePath: /dataset_manager/core/exporter/sgccgame_dataset_exporter.py
 @Description:
-'''
+"""
 import os
 import fiftyone.core.metadata as fom
 import fiftyone.utils.data as foud
@@ -99,8 +99,8 @@ class SGCCGameDatasetExporter(fouvoc.VOCDetectionDatasetExporter):
         extra_attrs=False,
     ):
         if data_path is None and labels_path is None:
-            data_path=os.path.abspath(export_dir)
-            labels_path=os.path.abspath(export_dir)
+            data_path = os.path.abspath(export_dir)
+            labels_path = os.path.abspath(export_dir)
         super().__init__(
             export_dir,
             data_path,

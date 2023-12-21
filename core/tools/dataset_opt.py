@@ -141,9 +141,7 @@ def update_dataset(
 
                     update_img_path_list.append(sample.filepath)
 
-    # NOTE: 注意这里解除装饰器
-    update_dataview = imgslist2dataview.__wrapped__(update_img_path_list,
-                                                    dataset)
+    update_dataview=dataset.select_by("filepath",update_img_path_list)
     update_dataview.tag_samples(str(datetime.now().replace(microsecond=0)) + "update")
 
     session = WEAK_CACHE.get("session", None)

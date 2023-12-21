@@ -13,6 +13,7 @@ from concurrent import futures
 import shutil
 from datetime import datetime
 import traceback
+from typing import Union
 
 
 from prompt_toolkit.shortcuts import ProgressBar
@@ -22,10 +23,16 @@ import fiftyone as fo
 import fiftyone.core.labels as fol
 from core.importer import SGCCGameDatasetImporter, generate_sgcc_sample
 from core.exporter import SGCCGameDatasetExporter
-from core.utils import get_all_file_path, timeblock,fol_det_nms,_export_one_sample,return_now_time
+from core.utils import (
+    get_all_file_path,
+    timeblock,
+    fol_det_nms,
+    _export_one_sample,
+    return_now_time,
+)
 from core.logging import logging, logging_path
-from core.tools import update_dataset,add_dataset_fields_by_txt,imgslist2dataview
-from core.cfg import BAK_DIR,SAMPLE_MAX_CACHE
+from core.tools import update_dataset, add_dataset_fields_by_txt, imgslist2dataview
+from core.cfg import BAK_DIR, SAMPLE_MAX_CACHE
 
 
 def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
@@ -77,7 +84,7 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
                     sample = task.result()
                 except Exception as e:
                     sample = None
-                    import_error.append((e,traceback.format_exc(limit=-1)))
+                    import_error.append((e, traceback.format_exc(limit=-1)))
                     # raise e
                 if sample is None:
                     continue
@@ -90,7 +97,7 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
             sample_cache.clear()
     dataset.persistent = persistent
     if os.path.isdir(data_dir):
-        dataset.info["dataset_dir"]=data_dir
+        dataset.info["dataset_dir"] = data_dir
         dataset.save()
     if import_error:
         logging.critical("=================CRIRICAL==================")
@@ -99,87 +106,138 @@ def generate_dataset(data_dir, name=None, use_importer=False, persistent=True):
         print("same error happened in import,please check {}".format(logging_path))
     return dataset
 
-def _deal_sample(img_path,dst_dir,flag,dataset:fo.Dataset,exporter,iou_thr,import_data_cls,back_dir):
-    if not os.path.exists(os.path.join(dst_dir,os.path.basename(img_path))):
-        return _copy_sample(img_path,dst_dir)
+
+def _deal_sample(
+    img_path,
+    dst_dir,
+    flag,
+    dataset: fo.Dataset,
+    exporter,
+    iou_thr,
+    import_data_cls,
+    back_dir,
+) -> str:
+    assert flag in ("overlap", "merge", "new"), "flag should be overlap, new or merge"
+    if not os.path.exists(os.path.join(dst_dir, os.path.basename(img_path))):
+        return _copy_sample(img_path, dst_dir)
     else:
+        ori_sample_path = os.path.join(dst_dir, os.path.basename(img_path))
 
-        ori_sample_path=os.path.join(dst_dir,os.path.basename(img_path))
-
-        ori_xml_path=os.path.splitext(ori_sample_path)[0]+".xml"
-        ori_anno_path=os.path.splitext(ori_sample_path)[0]+".anno"
+        ori_xml_path = os.path.splitext(ori_sample_path)[0] + ".xml"
+        ori_anno_path = os.path.splitext(ori_sample_path)[0] + ".anno"
         if os.path.exists(ori_xml_path):
-            shutil.copy(ori_xml_path,back_dir)
+            shutil.copy(ori_xml_path, back_dir)
         if os.path.exists(ori_anno_path):
-            shutil.copy(ori_anno_path,back_dir)
+            shutil.copy(ori_anno_path, back_dir)
 
+    need_import_sample: Union[fo.Sample, None] = generate_sgcc_sample(img_path)
+    if need_import_sample is None:
+        raise ValueError("%s is not a valid sample" % img_path)
+    exist_sample: fo.Sample = dataset[os.path.join(dst_dir, os.path.basename(img_path))]
     if "overlap" == flag:
-        need_import_sample=generate_sgcc_sample(img_path)
-        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
-
-        ni_s_label= need_import_sample.ground_truth.detections if need_import_sample.has_field("ground_truth") else []
-        e_s_label=exist_sample.ground_truth.detections if exist_sample.has_field("ground_truth") else []
+        ni_s_label = (
+            need_import_sample.ground_truth.detections
+            if need_import_sample.has_field("ground_truth")
+            else []
+        )
+        e_s_label = (
+            exist_sample.ground_truth.detections
+            if exist_sample.has_field("ground_truth")
+            else []
+        )
 
         if len(import_data_cls):
-            ni_all_classes=set(import_data_cls)
+            ni_all_classes = set(import_data_cls)
         else:
-            ni_all_classes=set([x.label for x in ni_s_label])
+            ni_all_classes = set([x.label for x in ni_s_label])
 
-        final_label=[]
-        for idx,i in enumerate(ni_s_label):
+        final_label = []
+        for idx, i in enumerate(ni_s_label):
             if i.label in ni_all_classes:
                 final_label.append(i)
 
-        for idx,i in enumerate(e_s_label):
+        for idx, i in enumerate(e_s_label):
             if i.label not in ni_all_classes:
                 final_label.append(i)
 
-        exist_sample.ground_truth=fol.Detections(detections=final_label)
-        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+        exist_sample.ground_truth = fol.Detections(detections=final_label)
 
-        return os.path.join(dst_dir,os.path.basename(img_path))
     elif "merge" == flag:
-        need_import_sample=generate_sgcc_sample(img_path)
-        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
+        ni_s_label = (
+            need_import_sample.ground_truth.detections
+            if need_import_sample.has_field("ground_truth")
+            else []
+        )
+        e_s_label = (
+            exist_sample.ground_truth.detections
+            if exist_sample.has_field("ground_truth")
+            else []
+        )
 
-        ni_s_label= need_import_sample.ground_truth.detections if need_import_sample.has_field("ground_truth") else []
-        e_s_label=exist_sample.ground_truth.detections if exist_sample.has_field("ground_truth") else []
+        for idx, i in enumerate(ni_s_label):
+            ni_s_label[idx].confidence = 1.0
 
-        for idx,i in enumerate(ni_s_label):
-            ni_s_label[idx].confidence=1.0
-
-        for idx,i in enumerate(e_s_label):
-            e_s_label[idx].confidence=0.7
+        for idx, i in enumerate(e_s_label):
+            e_s_label[idx].confidence = 0.7
 
         e_s_label.extend(ni_s_label)
 
-        final_label=fol_det_nms(e_s_label,iou_thr=iou_thr,sort_by="score")
-        exist_sample.ground_truth=final_label
-        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+        final_label = fol_det_nms(e_s_label, iou_thr=iou_thr, sort_by="score")
+        exist_sample.ground_truth = final_label
 
-        return os.path.join(dst_dir,os.path.basename(img_path))
     elif "new" == flag:
-        need_import_sample=generate_sgcc_sample(img_path)
-        exist_sample=dataset[os.path.join(dst_dir,os.path.basename(img_path))]
-        exist_sample.ground_truth=need_import_sample.ground_truth
-        _export_one_sample(exist_sample,exporter,True,os.path.dirname(exist_sample.filepath))
+        if need_import_sample.has_filed("ground_truth"):
+            exist_sample.ground_truth = need_import_sample.ground_truth
+        else:
+            exist_sample.ground_truth = fol.Detections()
 
-        return os.path.join(dst_dir,os.path.basename(img_path))
+    # merge anno
+    es_fields = set(exist_sample.field_names)
+    ns_fields = set(need_import_sample.field_names)
+
+    add_fields = ns_fields - es_fields
+
+    for field in es_fields:
+        if "ground_truth" == field:
+            continue
+        if isinstance(exist_sample.get_field(field), list) and field in ns_fields:
+            tmp = set(
+                exist_sample.get_field(field).extend(
+                    need_import_sample.get_field(field)
+                )
+            )
+            exist_sample.set_field(field, list(tmp))
+
+    for field in add_fields:
+        exist_sample.set_field(field, need_import_sample.get_field(field))
+
+    _export_one_sample(
+        exist_sample, exporter, True, os.path.dirname(exist_sample.filepath)
+    )
+
+    return os.path.join(dst_dir, os.path.basename(img_path))
 
 
-def _copy_sample(img_path,dst_dir) -> str:
-    xml_path=os.path.splitext(img_path)[0]+".xml"
-    anno_path=os.path.splitext(img_path)[0]+".anno"
-    shutil.copy(img_path,dst_dir)
+def _copy_sample(img_path, dst_dir) -> str:
+    xml_path = os.path.splitext(img_path)[0] + ".xml"
+    anno_path = os.path.splitext(img_path)[0] + ".anno"
+    shutil.copy(img_path, dst_dir)
     if os.path.exists(xml_path):
-        shutil.copy(xml_path,dst_dir)
+        shutil.copy(xml_path, dst_dir)
 
     if os.path.exists(anno_path):
-        shutil.copy(anno_path,dst_dir)
+        shutil.copy(anno_path, dst_dir)
 
-    return os.path.join(dst_dir,os.path.basename(img_path))
+    return os.path.join(dst_dir, os.path.basename(img_path))
 
-def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:str,same_sample_deal:str,merge_iou_thr=0.7,import_data_cls=()):
+
+def import_new_sample2exist_dataset(
+    exist_dataset: fo.Dataset,
+    new_samples_path: str,
+    same_sample_deal: str,
+    merge_iou_thr=0.7,
+    import_data_cls=(),
+):
     extra_attr_cfg_file = get_all_file_path(new_samples_path, filter_=(".annocfg",))
 
     extra_attr = {}
@@ -189,21 +247,26 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
                 with open(extra_attr_cfg_file[0], "r") as fr:
                     extra_attr = json.load(fr)
             except json.JSONDecodeError as e:
-                print("{} 不是json标准格式,报错信息如下:{}".format(extra_attr_cfg_file[0],e.msg))
+                print(
+                    "{} 不是json标准格式,报错信息如下:{}".format(
+                        extra_attr_cfg_file[0], e.msg
+                    )
+                )
                 return
 
     imgs_path = get_all_file_path(
-            new_samples_path,
-            filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
-        )
+        new_samples_path,
+        filter_=(".jpg", ".JPG", ".png", ".PNG", ".bmp", ".BMP", ".jpeg", ".JPEG"),
+    )
 
     # TODO: 这里需要注意以下,默认的路径
-    dst_dir=exist_dataset.info.get("dataset_dir",os.path.split(exist_dataset.first().filepath)[0])
+    dst_dir = exist_dataset.info.get(
+        "dataset_dir", os.path.split(exist_dataset.first().filepath)[0]
+    )
 
-    new_imgs_path=[]
+    new_imgs_path = []
 
-
-    back_dir=os.path.join(BAK_DIR,return_now_time())
+    back_dir = os.path.join(BAK_DIR, return_now_time())
     if not os.path.exists(back_dir):
         os.makedirs(back_dir)
     exporter = SGCCGameDatasetExporter(export_dir=dst_dir)
@@ -211,30 +274,46 @@ def import_new_sample2exist_dataset(exist_dataset:fo.Dataset,new_samples_path:st
 
     with exporter:
         with futures.ThreadPoolExecutor() as exec:
-            tasks=(exec.submit(_deal_sample,img_path,dst_dir,same_sample_deal,exist_dataset,exporter,merge_iou_thr,import_data_cls,back_dir) for img_path in imgs_path)
-            for task in tqdm(futures.as_completed(tasks),
-                    total=len(imgs_path),
-                    desc="样本拷贝合并进度:",
-                    dynamic_ncols=True,
-                    colour="green",
-                ):
-
+            tasks = (
+                exec.submit(
+                    _deal_sample,
+                    img_path,
+                    dst_dir,
+                    same_sample_deal,
+                    exist_dataset,
+                    exporter,
+                    merge_iou_thr,
+                    import_data_cls,
+                    back_dir,
+                )
+                for img_path in imgs_path
+            )
+            for task in tqdm(
+                futures.as_completed(tasks),
+                total=len(imgs_path),
+                desc="样本拷贝合并进度:",
+                dynamic_ncols=True,
+                colour="green",
+            ):
                 try:
-                    new_img_path=task.result()
+                    new_img_path = task.result()
                 except Exception as e:
-                    new_img_path=None
-                    import_error.append((e,traceback.format_exc(limit=-1)))
+                    new_img_path = None
+                    import_error.append((e, traceback.format_exc(limit=-1)))
                     continue
                 if new_img_path:
                     new_imgs_path.append(new_img_path)
 
-    update_dataset(exist_dataset,update_imgs_asbase=True,sample_path_list=new_imgs_path)
-
+    update_dataset(
+        exist_dataset, update_imgs_asbase=True, sample_path_list=new_imgs_path
+    )
 
     if extra_attr:
-        add_dataset_fields_by_txt(new_imgs_path,extra_attr,exist_dataset)
+        add_dataset_fields_by_txt(new_imgs_path, extra_attr, exist_dataset)
 
-    imgslist2dataview(new_imgs_path,exist_dataset).tag_samples(str(datetime.now().replace(microsecond=0))+"import")
+    imgslist2dataview(new_imgs_path, exist_dataset).tag_samples(
+        str(datetime.now().replace(microsecond=0)) + "import"
+    )
 
     if import_error:
         logging.critical("=================CRIRICAL==================")

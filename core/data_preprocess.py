@@ -71,7 +71,7 @@ def preprocess_one(
         shutil.copy(anno_path, os.path.join(save_dir, new_name + ".anno"))
     else:
         if anno_info:
-            anno_content=deepcopy(anno_info)
+            anno_content = deepcopy(anno_info)
             anno_content.update({"addtions": {"ori_jpg_path": img_path}})
             with open(os.path.join(save_dir, new_name + ".anno"), "w") as fw:
                 json.dump(anno_content, fw, indent=4)
