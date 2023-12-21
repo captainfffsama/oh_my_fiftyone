@@ -201,11 +201,9 @@ def _deal_sample(
         if "ground_truth" == field:
             continue
         if isinstance(exist_sample.get_field(field), list) and field in ns_fields:
-            tmp = set(
-                exist_sample.get_field(field).extend(
-                    need_import_sample.get_field(field)
-                )
-            )
+            t = list(exist_sample.get_field(field))
+            t.extend(list(need_import_sample.get_field(field)))
+            tmp = set(t)
             exist_sample.set_field(field, list(tmp))
 
     for field in add_fields:
