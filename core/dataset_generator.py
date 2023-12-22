@@ -309,9 +309,8 @@ def import_new_sample2exist_dataset(
     if extra_attr:
         add_dataset_fields_by_txt(new_imgs_path, extra_attr, exist_dataset)
 
-    imgslist2dataview(new_imgs_path, exist_dataset).tag_samples(
-        str(datetime.now().replace(microsecond=0)) + "import"
-    )
+    new_img_view = exist_dataset.select_by("filepath", new_imgs_path)
+    new_img_view.tag_samples(str(datetime.now().replace(microsecond=0)) + "import")
 
     if import_error:
         logging.critical("=================CRIRICAL==================")
