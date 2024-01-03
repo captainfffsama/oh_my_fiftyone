@@ -392,7 +392,7 @@ def _export_one_sample(
     get_anno: bool,
     save_dir,
     export_classes: Optional[list] = None,
-    label_filed: str = "ground_truth",
+    label_field: str = "ground_truth",
 ):
     image_path = sample.filepath
 
@@ -402,10 +402,10 @@ def _export_one_sample(
 
     # Assumes single label field case
     if export_classes is None:
-        label = sample[label_filed]
+        label = sample[label_field]
     else:
         label = []
-        for obj in sample[label_filed].detections:
+        for obj in sample[label_field].detections:
             if obj.label in export_classes:
                 label.append(obj)
 
