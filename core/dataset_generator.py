@@ -186,7 +186,7 @@ def _deal_sample(
         exist_sample.ground_truth = final_label
 
     elif "new" == flag:
-        if need_import_sample.has_filed("ground_truth"):
+        if need_import_sample.has_field("ground_truth"):
             exist_sample.ground_truth = need_import_sample.ground_truth
         else:
             exist_sample.ground_truth = fol.Detections()
